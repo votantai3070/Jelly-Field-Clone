@@ -66,13 +66,14 @@
     <Compile Include="Assets\Scripts\JellyPiece.cs" />
     <Compile Include="Assets\Scripts\JellyAnimation.cs" />
     <Compile Include="Assets\Scripts\Data\CellData.cs" />
-    <Compile Include="Assets\Scripts\UI\InputUtility.cs" />
     <Compile Include="Assets\Scripts\GoalSystem.cs" />
     <Compile Include="Assets\Scripts\JellyPieceView.cs" />
     <Compile Include="Assets\Scripts\MergeSystem.cs" />
     <Compile Include="Assets\Scripts\UI\InputHandler.cs" />
     <Compile Include="Assets\Scripts\Data\JellySubCell.cs" />
     <Compile Include="Assets\Scripts\UI\GridVisual.cs" />
+    <Compile Include="Assets\Scripts\Data\JellySlot.cs" />
+    <Compile Include="Assets\Scripts\Data\ContactDirection.cs" />
     <Compile Include="Assets\Scripts\Data\LevelGoalData.cs" />
     <Compile Include="Assets\Scripts\GameManager.cs" />
     <Compile Include="Assets\Scripts\BoardManager.cs" />

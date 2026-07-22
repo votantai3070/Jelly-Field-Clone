@@ -9,7 +9,6 @@ public class GoalSystem : MonoBehaviour
     private Dictionary<JellyColor, int> collected = new Dictionary<JellyColor, int>();
 
     public bool IsWin { get; private set; }
-
     public event Action OnWin;
 
     public void Initialize(LevelGoalData levelData)
@@ -32,35 +31,23 @@ public class GoalSystem : MonoBehaviour
         }
     }
 
-    public void CollectIfGoalColor(JellyColor color, int amount)
-    {
-        if (amount <= 0) return;
-        if (!IsGoalColor(color)) return;
-        if (IsWin) return;
-
-        if (!collected.ContainsKey(color))
-            collected[color] = 0;
-
-        collected[color] += amount;
-        CheckWinCondition();
-    }
-
     public void CollectRemovedColor(JellyColor color, int removedCount)
     {
-        CollectIfGoalColor(color, removedCount);
-    }
-
-    public bool IsGoalColor(JellyColor color)
-    {
-        if (currentLevel == null) return false;
+        if (removedCount <= 0 || IsWin || currentLevel == null)
+            return;
 
         for (int i = 0; i < currentLevel.goals.Count; i++)
         {
             if (currentLevel.goals[i].color == color)
-                return true;
-        }
+            {
+                if (!collected.ContainsKey(color))
+                    collected[color] = 0;
 
-        return false;
+                collected[color] += removedCount;
+                CheckWinCondition();
+                return;
+            }
+        }
     }
 
     public int GetCollected(JellyColor color)
@@ -70,7 +57,8 @@ public class GoalSystem : MonoBehaviour
 
     public int GetRequired(JellyColor color)
     {
-        if (currentLevel == null) return 0;
+        if (currentLevel == null)
+            return 0;
 
         for (int i = 0; i < currentLevel.goals.Count; i++)
         {
@@ -83,12 +71,15 @@ public class GoalSystem : MonoBehaviour
 
     public void CheckWinCondition()
     {
-        if (currentLevel == null || IsWin) return;
+        if (currentLevel == null || IsWin)
+            return;
 
         for (int i = 0; i < currentLevel.goals.Count; i++)
         {
-            ColorGoalEntry goal = currentLevel.goals[i];
-            if (GetCollected(goal.color) < goal.required)
+            var goal = currentLevel.goals[i];
+            int current = collected.ContainsKey(goal.color) ? collected[goal.color] : 0;
+
+            if (current < goal.required)
                 return;
         }
 

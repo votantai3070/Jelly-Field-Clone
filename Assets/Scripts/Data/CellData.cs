@@ -1,44 +1,26 @@
-using System;
 using UnityEngine;
 
-[Serializable]
+[System.Serializable]
 public class CellData
 {
-    [SerializeField] private Vector2Int coord;
-    [SerializeField] private JellyPiece currentPiece;
+    public Vector2Int Coord;
+    public JellyPiece OccupiedPiece;
 
-    public Vector2Int Coord
-    {
-        get => coord;
-        set => coord = value;
-    }
-
-    public JellyPiece CurrentPiece
-    {
-        get => currentPiece;
-        private set => currentPiece = value;
-    }
-
-    public bool IsEmpty => currentPiece == null;
+    public JellyPiece CurrentPiece => OccupiedPiece;
+    public bool IsEmpty => OccupiedPiece == null;
 
     public CellData(Vector2Int coord)
     {
-        this.coord = coord;
-        currentPiece = null;
+        Coord = coord;
     }
 
     public void SetPiece(JellyPiece piece)
     {
-        CurrentPiece = piece;
+        OccupiedPiece = piece;
     }
 
     public void Clear()
     {
-        CurrentPiece = null;
-    }
-
-    public bool HasPiece(JellyPiece piece)
-    {
-        return currentPiece == piece;
+        OccupiedPiece = null;
     }
 }

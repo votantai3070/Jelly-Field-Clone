@@ -7,8 +7,6 @@ public class JellyPiece : MonoBehaviour
     [SerializeField] private BoxCollider2D boxCollider;
     [SerializeField] private JellyAnimation jellyAnimation;
     [SerializeField] private JellyPieceView pieceView;
-
-    [Header("Runtime Data")]
     [SerializeField] private List<JellySubCell> subCells = new List<JellySubCell>();
 
     public Vector2Int CurrentCoord { get; private set; }
@@ -17,7 +15,7 @@ public class JellyPiece : MonoBehaviour
 
     public void Setup(List<JellySubCell> newSubCells)
     {
-        subCells = CloneSubCells(newSubCells);
+        subCells = newSubCells;
         RefreshVisual();
     }
 
@@ -32,47 +30,22 @@ public class JellyPiece : MonoBehaviour
         HasCell = false;
     }
 
-    public bool HasColor(JellyColor color)
+    public bool RemoveSubCellById(string subCellId)
     {
-        for (int i = 0; i < subCells.Count; i++)
-        {
-            if (subCells[i].color == color)
-                return true;
-        }
-
-        return false;
-    }
-
-    public int CountColor(JellyColor color)
-    {
-        int count = 0;
+        if (string.IsNullOrEmpty(subCellId))
+            return false;
 
         for (int i = 0; i < subCells.Count; i++)
         {
-            if (subCells[i].color == color)
-                count++;
-        }
-
-        return count;
-    }
-
-    public int RemoveColor(JellyColor color)
-    {
-        int removed = 0;
-
-        for (int i = subCells.Count - 1; i >= 0; i--)
-        {
-            if (subCells[i].color == color)
+            if (subCells[i] != null && subCells[i].id == subCellId)
             {
                 subCells.RemoveAt(i);
-                removed++;
+                RefreshVisual();
+                return true;
             }
         }
 
-        if (removed > 0)
-            RefreshVisual();
-
-        return removed;
+        return false;
     }
 
     public bool IsEmptyCompletely()
@@ -89,7 +62,11 @@ public class JellyPiece : MonoBehaviour
 
         for (int i = 0; i < subCells.Count; i++)
         {
+            if (subCells[i] == null)
+                continue;
+
             JellyColor color = subCells[i].color;
+
             if (!counts.ContainsKey(color))
                 counts[color] = 0;
 
@@ -109,20 +86,6 @@ public class JellyPiece : MonoBehaviour
         }
 
         return result;
-    }
-
-    public List<JellyColor> GetDistinctColors()
-    {
-        List<JellyColor> colors = new List<JellyColor>();
-
-        for (int i = 0; i < subCells.Count; i++)
-        {
-            JellyColor color = subCells[i].color;
-            if (!colors.Contains(color))
-                colors.Add(color);
-        }
-
-        return colors;
     }
 
     public void RefreshVisual()
@@ -163,18 +126,25 @@ public class JellyPiece : MonoBehaviour
             onComplete?.Invoke();
     }
 
-    private List<JellySubCell> CloneSubCells(List<JellySubCell> source)
-    {
-        List<JellySubCell> clone = new List<JellySubCell>();
+    //private List<JellySubCell> CloneSubCells(List<JellySubCell> source)
+    //{
+    //    List<JellySubCell> clone = new List<JellySubCell>();
 
-        if (source == null)
-            return clone;
+    //    if (source == null)
+    //        return clone;
 
-        for (int i = 0; i < source.Count; i++)
-        {
-            clone.Add(new JellySubCell(source[i].color));
-        }
+    //    for (int i = 0; i < source.Count; i++)
+    //    {
+    //        if (source[i] == null)
+    //            continue;
 
-        return clone;
-    }
+    //        string newId = string.IsNullOrEmpty(source[i].id)
+    //            ? Guid.NewGuid().ToString()
+    //            : source[i].id;
+
+    //        clone.Add(new JellySubCell(newId, source[i].color));
+    //    }
+
+    //    return clone;
+    //}
 }

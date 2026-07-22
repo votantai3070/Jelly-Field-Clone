@@ -1,4 +1,3 @@
-using System.Collections;
 using UnityEngine;
 
 public class InputHandler : MonoBehaviour
@@ -16,14 +15,15 @@ public class InputHandler : MonoBehaviour
     {
         if (mainCamera == null)
             mainCamera = Camera.main;
-
-        SpawnNextPiece();
     }
 
     private void Update()
     {
-        if (gameManager.IsGameEnded) return;
-        if (Input.touchCount <= 0) return;
+        if (gameManager == null || gameManager.IsGameEnded || gameManager.IsResolving)
+            return;
+
+        if (Input.touchCount <= 0)
+            return;
 
         HandleTouch();
     }
@@ -55,18 +55,20 @@ public class InputHandler : MonoBehaviour
     private void TrySelectPiece(Vector3 worldPos)
     {
         Collider2D[] hits = Physics2D.OverlapPointAll(worldPos);
-        if (hits.Length == 0) return;
+        if (hits == null || hits.Length == 0)
+            return;
 
         JellyPiece piece = null;
 
         for (int i = 0; i < hits.Length; i++)
         {
             piece = hits[i].GetComponent<JellyPiece>();
-            if (piece != null) break;
+            if (piece != null)
+                break;
         }
 
-        if (piece == null) return;
-        if (piece != currentPiece) return;
+        if (piece == null || piece != currentPiece)
+            return;
 
         selectedPiece = piece;
         selectedStartPosition = piece.transform.position;
@@ -74,25 +76,27 @@ public class InputHandler : MonoBehaviour
 
     private void DragSelectedPiece(Vector3 worldPos)
     {
-        if (selectedPiece == null) return;
+        if (selectedPiece == null)
+            return;
+
         selectedPiece.transform.position = new Vector3(worldPos.x, worldPos.y, 0f);
     }
 
     private void ReleaseSelectedPiece(Vector3 worldPos)
     {
-        if (selectedPiece == null) return;
+        if (selectedPiece == null)
+            return;
 
         Vector2Int coord = board.WorldToGrid(worldPos);
         bool placed = board.TryPlacePiece(selectedPiece, coord);
 
         if (placed)
         {
-            gameManager.ResolveTurn(selectedPiece, coord);
+            JellyPiece placedPiece = selectedPiece;
             selectedPiece = null;
             currentPiece = null;
 
-            if (!gameManager.IsGameEnded)
-                StartCoroutine(SpawnNextDelayed(0.25f));
+            gameManager.ResolveTurn(placedPiece, coord);
         }
         else
         {
@@ -101,17 +105,13 @@ public class InputHandler : MonoBehaviour
         }
     }
 
-    private IEnumerator SpawnNextDelayed(float delay)
-    {
-        yield return new WaitForSeconds(delay);
-
-        if (!gameManager.IsGameEnded)
-            SpawnNextPiece();
-    }
-
     public void SpawnNextPiece()
     {
-        if (gameManager.IsGameEnded) return;
+        if (gameManager == null || gameManager.IsGameEnded)
+            return;
+
+        if (currentPiece != null)
+            return;
 
         JellyPiece prefab = gameManager.GetNextPiecePrefab();
         if (prefab == null)

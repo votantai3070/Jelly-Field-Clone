@@ -266,7 +266,11 @@ MonoBehaviour:
   goalSystem: {fileID: 951773540}
   levelData: {fileID: 11400000, guid: 1e4744568d9cd6e4a9d1607fa597a8c0, type: 2}
   jellyPrefab: {fileID: 6774444392215395063, guid: 1e385b3c58a6dbf45bc84e20b14c1035, type: 3}
+  inputHandler: {fileID: 110036467}
   jellyPopEffectPrefab: {fileID: 1144231043699801010, guid: 5a1af12bf4e755d4b86fed91e705d71d, type: 3}
+  preCollectPulseDelay: 0.06
+  postResolveDelay: 0.08
+  nextSpawnDelay: 0.12
   coins: 0
 --- !u!4 &324094664
 Transform:
@@ -579,7 +583,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MergeSystem
   board: {fileID: 72704191}
-  minMatchCount: 2
 --- !u!4 &1860977677
 Transform:
   m_ObjectHideFlags: 0
@@ -603,6 +606,6 @@ SceneRoots:
   - {fileID: 619394802}
   - {fileID: 72704192}
   - {fileID: 1860977677}
-  - {fileID: 110036468}
   - {fileID: 324094664}
   - {fileID: 951773541}
+  - {fileID: 110036468}

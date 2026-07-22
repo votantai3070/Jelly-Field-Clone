@@ -70,20 +70,21 @@ public class GameManager : MonoBehaviour
 
     public void SetupSpawnedPiece(JellyPiece piece)
     {
-        if (piece == null) return;
+        if (piece == null)
+            return;
+
         piece.Setup(GenerateRandomSubCells());
     }
 
     private List<JellySubCell> GenerateRandomSubCells()
     {
+        int count = Random.Range(1, 5);
         List<JellySubCell> result = new List<JellySubCell>();
 
-        JellyColor dominant = GetRandomColor();
-        result.Add(new JellySubCell(dominant));
-        result.Add(new JellySubCell(dominant));
-
-        result.Add(new JellySubCell(GetRandomColor()));
-        result.Add(new JellySubCell(GetRandomColor()));
+        for (int i = 0; i < count; i++)
+        {
+            result.Add(new JellySubCell(GetRandomColor()));
+        }
 
         return result;
     }
@@ -95,7 +96,10 @@ public class GameManager : MonoBehaviour
 
     public void ResolveTurn(JellyPiece placedPiece, Vector2Int placedCoord)
     {
-        if (IsGameEnded || IsResolving) return;
+        if (IsGameEnded || IsResolving)
+            return;
+
+        Debug.Log("ResolveTurn at: " + placedCoord + " piece: " + placedPiece.name);
         StartCoroutine(ResolveTurnRoutine(placedCoord));
     }
 
@@ -103,14 +107,63 @@ public class GameManager : MonoBehaviour
     {
         IsResolving = true;
 
-        bool hasMatch = mergeSystem.TryGetMatchGroup(placedCoord, out List<JellyPiece> matchedPieces, out JellyColor matchedColor);
+        bool hasMatch = mergeSystem.TryGetTouchMatchesForPlacedPiece(placedCoord, out List<MatchedSubCellData> matchedSubs);
 
-        if (hasMatch && matchedPieces != null && matchedPieces.Count > 0)
+        if (hasMatch && matchedSubs != null && matchedSubs.Count > 0)
         {
-            PlayPreCollectAnimation(matchedPieces);
+            HashSet<JellyPiece> touchedPieces = new HashSet<JellyPiece>();
+
+            for (int i = 0; i < matchedSubs.Count; i++)
+            {
+                if (matchedSubs[i] != null && matchedSubs[i].piece != null)
+                    touchedPieces.Add(matchedSubs[i].piece);
+            }
+
+            foreach (JellyPiece piece in touchedPieces)
+            {
+                piece.PlayPreCollectPulse();
+            }
+
             yield return new WaitForSeconds(preCollectPulseDelay);
 
-            yield return StartCoroutine(RemoveOnlyMatchedColorRoutine(matchedPieces, matchedColor));
+            List<JellyPiece> emptiedPieces = new List<JellyPiece>();
+            HashSet<JellyPiece> survivedPieces = new HashSet<JellyPiece>();
+
+            for (int i = 0; i < matchedSubs.Count; i++)
+            {
+                MatchedSubCellData data = matchedSubs[i];
+                if (data == null || data.piece == null || string.IsNullOrEmpty(data.subCellId))
+                    continue;
+
+                bool removed = data.piece.RemoveSubCellById(data.subCellId);
+                if (removed)
+                    goalSystem.CollectRemovedColor(data.color, 1);
+            }
+
+            foreach (JellyPiece piece in touchedPieces)
+            {
+                if (piece == null)
+                    continue;
+
+                if (piece.IsEmptyCompletely())
+                    emptiedPieces.Add(piece);
+                else
+                    survivedPieces.Add(piece);
+            }
+
+            foreach (JellyPiece piece in survivedPieces)
+            {
+                piece.PlayPreCollectPulse();
+            }
+
+            if (emptiedPieces.Count > 0)
+            {
+                Vector3 collectCenter = GetCollectCenter(emptiedPieces);
+                yield return StartCoroutine(PlayCollectAndRemoveRoutine(emptiedPieces, collectCenter));
+            }
+
+            Debug.Log("Checking merge at " + placedCoord);
+            Debug.Log("Has match: " + hasMatch + " count: " + (matchedSubs == null ? 0 : matchedSubs.Count));
 
             yield return new WaitForSeconds(postResolveDelay);
         }
@@ -130,55 +183,10 @@ public class GameManager : MonoBehaviour
         }
 
         yield return new WaitForSeconds(nextSpawnDelay);
-
         IsResolving = false;
 
         if (!IsGameEnded && inputHandler != null)
             inputHandler.SpawnNextPiece();
-    }
-
-    private void PlayPreCollectAnimation(List<JellyPiece> matchedPieces)
-    {
-        for (int i = 0; i < matchedPieces.Count; i++)
-        {
-            JellyPiece piece = matchedPieces[i];
-            if (piece == null) continue;
-            piece.PlayPreCollectPulse();
-        }
-    }
-
-    private IEnumerator RemoveOnlyMatchedColorRoutine(List<JellyPiece> matchedPieces, JellyColor matchedColor)
-    {
-        List<JellyPiece> emptiedPieces = new List<JellyPiece>();
-        List<JellyPiece> survivedPieces = new List<JellyPiece>();
-
-        for (int i = 0; i < matchedPieces.Count; i++)
-        {
-            JellyPiece piece = matchedPieces[i];
-            if (piece == null) continue;
-
-            int removedCount = piece.RemoveColor(matchedColor);
-
-            if (removedCount > 0)
-                goalSystem.CollectRemovedColor(matchedColor, removedCount);
-
-            if (piece.IsEmptyCompletely())
-                emptiedPieces.Add(piece);
-            else
-                survivedPieces.Add(piece);
-        }
-
-        for (int i = 0; i < survivedPieces.Count; i++)
-        {
-            if (survivedPieces[i] != null)
-                survivedPieces[i].PlayPreCollectPulse();
-        }
-
-        if (emptiedPieces.Count > 0)
-        {
-            Vector3 collectCenter = GetCollectCenter(emptiedPieces);
-            yield return StartCoroutine(PlayCollectAndRemoveRoutine(emptiedPieces, collectCenter));
-        }
     }
 
     private IEnumerator PlayCollectAndRemoveRoutine(List<JellyPiece> piecesToRemove, Vector3 collectCenter)
@@ -198,7 +206,8 @@ public class GameManager : MonoBehaviour
         for (int i = 0; i < piecesToRemove.Count; i++)
         {
             JellyPiece piece = piecesToRemove[i];
-            if (piece == null) continue;
+            if (piece == null)
+                continue;
 
             Vector2Int coord = piece.CurrentCoord;
             board.RemovePiece(coord);
@@ -227,7 +236,8 @@ public class GameManager : MonoBehaviour
         for (int i = 0; i < pieces.Count; i++)
         {
             JellyPiece piece = pieces[i];
-            if (piece == null) continue;
+            if (piece == null)
+                continue;
 
             center += piece.transform.position;
             count++;
@@ -255,14 +265,10 @@ public class GameManager : MonoBehaviour
 
         switch (piece.GetPrimaryColor())
         {
-            case JellyColor.Red:
-                return new Color(1f, 0.35f, 0.35f);
-            case JellyColor.Yellow:
-                return new Color(1f, 0.87f, 0.25f);
-            case JellyColor.Blue:
-                return new Color(0.3f, 0.55f, 1f);
-            case JellyColor.Green:
-                return new Color(0.35f, 0.9f, 0.45f);
+            case JellyColor.Red: return new Color(1f, 0.35f, 0.35f);
+            case JellyColor.Yellow: return new Color(1f, 0.87f, 0.25f);
+            case JellyColor.Blue: return new Color(0.3f, 0.55f, 1f);
+            case JellyColor.Green: return new Color(0.35f, 0.9f, 0.45f);
         }
 
         return Color.white;
@@ -270,7 +276,8 @@ public class GameManager : MonoBehaviour
 
     private void HandleWin()
     {
-        if (IsGameEnded) return;
+        if (IsGameEnded)
+            return;
 
         IsGameEnded = true;
 

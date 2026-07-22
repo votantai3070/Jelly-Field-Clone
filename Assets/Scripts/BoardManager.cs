@@ -52,7 +52,7 @@ public class BoardManager : MonoBehaviour
         }
     }
 
-    public bool IsInside(Vector2Int coord)
+    public bool IsInsideGrid(Vector2Int coord)
     {
         return coord.x >= 0 && coord.x < width &&
                coord.y >= 0 && coord.y < height;
@@ -60,7 +60,7 @@ public class BoardManager : MonoBehaviour
 
     public CellData GetCell(Vector2Int coord)
     {
-        if (!IsInside(coord))
+        if (!IsInsideGrid(coord))
             return null;
 
         return grid[coord.x, coord.y];
@@ -74,10 +74,8 @@ public class BoardManager : MonoBehaviour
     public Vector2Int WorldToGrid(Vector2 worldPos)
     {
         Vector2 local = worldPos - origin;
-
         int x = Mathf.RoundToInt(local.x / cellSize);
         int y = Mathf.RoundToInt(local.y / cellSize);
-
         return new Vector2Int(x, y);
     }
 
@@ -86,7 +84,7 @@ public class BoardManager : MonoBehaviour
         if (piece == null)
             return false;
 
-        if (!IsInside(targetCoord))
+        if (!IsInsideGrid(targetCoord))
             return false;
 
         CellData targetCell = GetCell(targetCoord);
@@ -99,7 +97,7 @@ public class BoardManager : MonoBehaviour
         targetCell.SetPiece(piece);
         piece.SetCoord(targetCoord);
         piece.transform.position = GridToWorld(targetCoord);
-        piece.PlayLanding();
+        piece.PlayLanding(); // Animation
 
         return true;
     }
@@ -153,28 +151,6 @@ public class BoardManager : MonoBehaviour
         return result;
     }
 
-    public List<JellyPiece> GetNeighborsByPrimaryColor(Vector2Int coord, JellyColor color)
-    {
-        List<JellyPiece> result = new List<JellyPiece>();
-
-        for (int i = 0; i < Directions.Length; i++)
-        {
-            Vector2Int next = coord + Directions[i];
-            if (!IsInside(next))
-                continue;
-
-            CellData cell = GetCell(next);
-            if (cell == null || cell.IsEmpty || cell.CurrentPiece == null)
-                continue;
-
-            JellyPiece piece = cell.CurrentPiece;
-            if (piece.GetPrimaryColor() == color)
-                result.Add(piece);
-        }
-
-        return result;
-    }
-
     public List<JellyPiece> GetNeighbors(Vector2Int coord)
     {
         List<JellyPiece> result = new List<JellyPiece>();
@@ -182,7 +158,7 @@ public class BoardManager : MonoBehaviour
         for (int i = 0; i < Directions.Length; i++)
         {
             Vector2Int next = coord + Directions[i];
-            if (!IsInside(next))
+            if (!IsInsideGrid(next))
                 continue;
 
             CellData cell = GetCell(next);
