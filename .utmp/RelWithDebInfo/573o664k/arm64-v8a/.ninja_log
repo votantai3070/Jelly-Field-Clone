@@ -1,0 +1,12 @@
+# ninja log v5
+89	773	8065016989064123	FramePacing/CMakeFiles/swappywrapper.dir/UnitySwappyWrapper.cpp.o	69f80bd8b167c0b7
+775	1198	8065016993376125	F:/Game Project/Jelly Field clone/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/573o664k/obj/arm64-v8a/libswappywrapper.so	8143786500759073
+27	2619	8065017007659431	GameActivity/CMakeFiles/game.dir/UGAInputKeyEvent.cpp.o	e8267094cc3f995a
+38	2648	8065017008023640	GameActivity/CMakeFiles/game.dir/UGAEntry.cpp.o	36e2e51f4c1b5e73
+9	2691	8065017008420708	GameActivity/CMakeFiles/game.dir/UGAConfiguration.cpp.o	d205257d3f067d1f
+62	2732	8065017008890129	GameActivity/CMakeFiles/game.dir/UGAInputMotionEvent.cpp.o	d71a9d07199faf88
+1	2809	8065017009707320	GameActivity/CMakeFiles/game.dir/UGADebug.cpp.o	91298c7621114bbe
+75	3107	8065017012661517	GameActivity/CMakeFiles/game.dir/UGASoftKeyboard.cpp.o	80265002f46278f1
+50	3144	8065017013025768	GameActivity/CMakeFiles/game.dir/UGAInput.cpp.o	69c734efdc495ebf
+18	3370	8065017015216845	GameActivity/CMakeFiles/game.dir/UGAApplication.cpp.o	acca2e41d2f8d830
+3370	3510	8065017016718325	F:/Game Project/Jelly Field clone/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/573o664k/obj/arm64-v8a/libgame.so	b82656b6e7d70da0

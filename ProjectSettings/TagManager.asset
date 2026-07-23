@@ -41,5 +41,14 @@ TagManager:
   - name: Default
     uniqueID: 0
     locked: 0
+  - name: UI
+    uniqueID: 3503119541
+    locked: 0
+  - name: Cell
+    uniqueID: 1772864439
+    locked: 0
+  - name: Jelly
+    uniqueID: 857301775
+    locked: 0
   m_RenderingLayers:
   - Default

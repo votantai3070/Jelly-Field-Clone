@@ -4,12 +4,14 @@ using UnityEngine;
 
 public class GoalSystem : MonoBehaviour
 {
+    public event Action OnWin;
+    public Action<Dictionary<JellyColor, int>> OnCollectedChanged;
+
     [SerializeField] private LevelGoalData currentLevel;
 
     private Dictionary<JellyColor, int> collected = new Dictionary<JellyColor, int>();
 
     public bool IsWin { get; private set; }
-    public event Action OnWin;
 
     public void Initialize(LevelGoalData levelData)
     {
@@ -44,6 +46,8 @@ public class GoalSystem : MonoBehaviour
                     collected[color] = 0;
 
                 collected[color] += removedCount;
+
+                OnCollectedChanged?.Invoke(collected);
                 CheckWinCondition();
                 return;
             }

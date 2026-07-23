@@ -7,9 +7,17 @@ public class InputHandler : MonoBehaviour
     [SerializeField] private GameManager gameManager;
     [SerializeField] private Vector3 spawnPreviewPosition = new Vector3(0f, 3.5f, 0f);
 
+    [Header("Drag Feel")]
+    [SerializeField] private float dragSmoothTime = 0.045f;
+    [SerializeField] private float dragMaxSpeed = 30f;
+
     private JellyPiece currentPiece;
     private JellyPiece selectedPiece;
     private Vector3 selectedStartPosition;
+
+    private Vector3 dragTargetPosition;
+    private Vector3 dragVelocity;
+    private Vector3 lastPiecePosition;
 
     private void Start()
     {
@@ -22,10 +30,10 @@ public class InputHandler : MonoBehaviour
         if (gameManager == null || gameManager.IsGameEnded || gameManager.IsResolving)
             return;
 
-        if (Input.touchCount <= 0)
-            return;
+        if (Input.touchCount > 0)
+            HandleTouch();
 
-        HandleTouch();
+        UpdateDraggedPieceFollow();
     }
 
     private void HandleTouch()
@@ -72,6 +80,12 @@ public class InputHandler : MonoBehaviour
 
         selectedPiece = piece;
         selectedStartPosition = piece.transform.position;
+
+        dragTargetPosition = new Vector3(worldPos.x, worldPos.y, 0f);
+        dragVelocity = Vector3.zero;
+        lastPiecePosition = selectedPiece.transform.position;
+
+        selectedPiece.StartDragJiggle();
     }
 
     private void DragSelectedPiece(Vector3 worldPos)
@@ -79,7 +93,29 @@ public class InputHandler : MonoBehaviour
         if (selectedPiece == null)
             return;
 
-        selectedPiece.transform.position = new Vector3(worldPos.x, worldPos.y, 0f);
+        dragTargetPosition = new Vector3(worldPos.x, worldPos.y, 0f);
+    }
+
+    private void UpdateDraggedPieceFollow()
+    {
+        if (selectedPiece == null)
+            return;
+
+        Vector3 current = selectedPiece.transform.position;
+        Vector3 next = Vector3.SmoothDamp(
+            current,
+            dragTargetPosition,
+            ref dragVelocity,
+            dragSmoothTime,
+            dragMaxSpeed
+        );
+
+        next.z = 0f;
+        selectedPiece.transform.position = next;
+
+        Vector3 jiggleDelta = next - lastPiecePosition;
+        selectedPiece.UpdateDragJiggle(jiggleDelta);
+        lastPiecePosition = next;
     }
 
     private void ReleaseSelectedPiece(Vector3 worldPos)
@@ -87,21 +123,27 @@ public class InputHandler : MonoBehaviour
         if (selectedPiece == null)
             return;
 
-        Vector2Int coord = board.WorldToGrid(worldPos);
+        Vector2Int coord = board.WorldToGrid(selectedPiece.transform.position);
         bool placed = board.TryPlacePiece(selectedPiece, coord);
 
         if (placed)
         {
             JellyPiece placedPiece = selectedPiece;
+            placedPiece.StopDragJiggle(false);
+
             selectedPiece = null;
             currentPiece = null;
+            dragVelocity = Vector3.zero;
 
             gameManager.ResolveTurn(placedPiece, coord);
         }
         else
         {
+            selectedPiece.StopDragJiggle(true);
             selectedPiece.transform.position = selectedStartPosition;
+
             selectedPiece = null;
+            dragVelocity = Vector3.zero;
         }
     }
 

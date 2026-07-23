@@ -106,6 +106,24 @@ public class JellyPiece : MonoBehaviour
             boxCollider.size = Vector2.one;
     }
 
+    public void StartDragJiggle()
+    {
+        if (jellyAnimation != null)
+            jellyAnimation.StartDragJiggle();
+    }
+
+    public void UpdateDragJiggle(Vector3 worldDelta)
+    {
+        if (jellyAnimation != null)
+            jellyAnimation.SetDragVelocity(worldDelta);
+    }
+
+    public void StopDragJiggle(bool snapToBase = true)
+    {
+        if (jellyAnimation != null)
+            jellyAnimation.StopDragJiggle(snapToBase);
+    }
+
     public void PlayLanding()
     {
         if (jellyAnimation != null)

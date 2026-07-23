@@ -137,8 +137,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::JellyPieceView
   contentRoot: {fileID: 7401362457190954067}
   subCellPrefab: {fileID: 3627452460226001721, guid: 83c9cb7962ff6b541b47226deb0c1b29, type: 3}
-  cellSpacing: 0.32
-  gridOffset: {x: 0, y: 0}
+  padding: 0.04
+  spacing: 0.02
+  sortingOrder: 1
 --- !u!1 &3686807316548931383
 GameObject:
   m_ObjectHideFlags: 0
@@ -281,10 +282,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: faddefd4d58f89e49a890dbe82c40485, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::JellyAnimation
-  visualRoot: {fileID: 3726490942931796761}
+  visualRoot: {fileID: 7401362457190954067}
   playIdle: 1
   idleSpeed: 2.2
   idleAmount: 0.04
+  dragJiggleSpeed: 18
+  dragJiggleAmountX: 0.08
+  dragJiggleAmountY: 0.06
+  dragStretchAmount: 0.12
+  dragReturnTime: 0.08
   landSquashX: 1.14
   landSquashY: 0.86
   landRecoverTime: 0.12

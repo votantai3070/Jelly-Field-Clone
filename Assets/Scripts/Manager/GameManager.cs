@@ -1,9 +1,12 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class GameManager : MonoBehaviour
 {
+    public Action<LevelGoalData> OnGoalObjectiveUIChanged;
+
     [Header("Core Refs")]
     [SerializeField] private BoardManager board;
     [SerializeField] private MergeSystem mergeSystem;
@@ -37,6 +40,7 @@ public class GameManager : MonoBehaviour
             board.ConfigureBoard(levelData.width, levelData.height);
             goalSystem.Initialize(levelData);
             goalSystem.OnWin += HandleWin;
+            OnGoalObjectiveUIChanged?.Invoke(levelData);
         }
 
         if (inputHandler != null && !IsGameEnded)
@@ -78,7 +82,7 @@ public class GameManager : MonoBehaviour
 
     private List<JellySubCell> GenerateRandomSubCells()
     {
-        int count = Random.Range(1, 5);
+        int count = UnityEngine.Random.Range(1, 5);
         List<JellySubCell> result = new List<JellySubCell>(count);
 
         for (int i = 0; i < count; i++)
@@ -116,7 +120,7 @@ public class GameManager : MonoBehaviour
         if (candidates.Count == 0)
             return GetRandomColor();
 
-        return candidates[Random.Range(0, candidates.Count)];
+        return candidates[UnityEngine.Random.Range(0, candidates.Count)];
     }
 
     //  Xác định subcell kề nhau trong cùng jelly
@@ -151,7 +155,7 @@ public class GameManager : MonoBehaviour
 
     private JellyColor GetRandomColor()
     {
-        return (JellyColor)Random.Range(0, 4);
+        return (JellyColor)UnityEngine.Random.Range(0, 4);
     }
 
     public void ResolveTurn(JellyPiece placedPiece, Vector2Int placedCoord)
