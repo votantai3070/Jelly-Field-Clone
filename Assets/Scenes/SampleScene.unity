@@ -130,6 +130,7 @@ GameObject:
   - component: {fileID: 72704192}
   - component: {fileID: 72704191}
   - component: {fileID: 72704193}
+  - component: {fileID: 72704194}
   m_Layer: 0
   m_Name: BOARD MANAGER
   m_TagString: Untagged
@@ -151,7 +152,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BoardManager
   width: 6
   height: 8
-  cellSize: 0.9
+  cellSize: 1
   origin: {x: -2.22, y: -2.9}
   drawGizmos: 1
 --- !u!4 &72704192
@@ -184,6 +185,21 @@ MonoBehaviour:
   board: {fileID: 72704191}
   cellVisualPrefab: {fileID: 2122034756756290836, guid: b1665913cd5ba734ca106ab2bb490856, type: 3}
   container: {fileID: 0}
+--- !u!114 &72704194
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 72704190}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f735c083ece68874eb0a7cbdd5205208, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BoardCameraFitter
+  targetCamera: {fileID: 519420031}
+  board: {fileID: 72704191}
+  extraPadding: 0.5
 --- !u!1 &110036466
 GameObject:
   m_ObjectHideFlags: 0
@@ -393,7 +409,7 @@ Camera:
   far clip plane: 1000
   field of view: 34
   orthographic: 1
-  orthographic size: 6
+  orthographic size: 6.7666664
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
@@ -418,7 +434,7 @@ Transform:
   m_GameObject: {fileID: 519420028}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: -10}
+  m_LocalPosition: {x: 0.27999997, y: 0.5999999, z: -10}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

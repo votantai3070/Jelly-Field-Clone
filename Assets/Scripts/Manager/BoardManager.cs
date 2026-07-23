@@ -58,6 +58,13 @@ public class BoardManager : MonoBehaviour
                coord.y >= 0 && coord.y < height;
     }
 
+    public Vector3 GetBoardCenterWorld()
+    {
+        float w = (width - 1) * cellSize;
+        float h = (height - 1) * cellSize;
+        return origin + new Vector2(w * 0.5f, h * 0.5f);
+    }
+
     public CellData GetCell(Vector2Int coord)
     {
         if (!IsInsideGrid(coord))

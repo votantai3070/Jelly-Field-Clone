@@ -45,13 +45,7 @@ public class MergeSystem : MonoBehaviour
             if (neighborPiece == placedPiece)
                 continue;
 
-            CollectTouchPairsBetweenPieces(
-                placedPiece,
-                neighborPiece,
-                dir,
-                VectorToDirection(dir),
-                unique
-            );
+            CollectTouchPairsBetweenPieces(placedPiece, neighborPiece, dir, VectorToDirection(dir), unique);
         }
 
         foreach (var kv in unique)
