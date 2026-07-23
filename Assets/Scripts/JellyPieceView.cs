@@ -1,5 +1,4 @@
-using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 public class JellyPieceView : MonoBehaviour
@@ -45,6 +44,7 @@ public class JellyPieceView : MonoBehaviour
         }
     }
 
+    //  Tính bố cục các phần của jelly dựa trên số lượng subcell
     private List<LayoutSlotData> BuildLayout(int count)
     {
         List<LayoutSlotData> result = new List<LayoutSlotData>();
@@ -120,18 +120,5 @@ public class JellyPieceView : MonoBehaviour
         }
 
         return Color.white;
-    }
-
-    [Serializable]
-    private struct LayoutSlotData
-    {
-        public JellySlot slot;
-        public Rect rect;
-
-        public LayoutSlotData(JellySlot slot, Rect rect)
-        {
-            this.slot = slot;
-            this.rect = rect;
-        }
     }
 }

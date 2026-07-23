@@ -23,13 +23,13 @@ public class JellySubCell
         localRect = default;
     }
 
-    public JellySubCell(string id, JellyColor color)
-    {
-        this.id = string.IsNullOrEmpty(id) ? Guid.NewGuid().ToString() : id;
-        this.color = color;
-        slot = JellySlot.None;
-        localRect = default;
-    }
+    //public JellySubCell(string id, JellyColor color)
+    //{
+    //    this.id = string.IsNullOrEmpty(id) ? Guid.NewGuid().ToString() : id;
+    //    this.color = color;
+    //    slot = JellySlot.None;
+    //    localRect = default;
+    //}
 
     public void SetRuntimeLayout(JellySlot slot, Rect localRect)
     {

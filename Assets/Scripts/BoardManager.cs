@@ -88,7 +88,7 @@ public class BoardManager : MonoBehaviour
             return false;
 
         CellData targetCell = GetCell(targetCoord);
-        if (targetCell == null || !targetCell.IsEmpty)
+        if (targetCell == null || !targetCell.IsPieceEmpty)
             return false;
 
         if (piece.HasCell)
@@ -105,7 +105,7 @@ public class BoardManager : MonoBehaviour
     public void RemovePiece(Vector2Int coord)
     {
         CellData cell = GetCell(coord);
-        if (cell == null || cell.IsEmpty)
+        if (cell == null || cell.IsPieceEmpty)
             return;
 
         JellyPiece piece = cell.CurrentPiece;
@@ -124,7 +124,7 @@ public class BoardManager : MonoBehaviour
         {
             for (int y = 0; y < height; y++)
             {
-                if (grid[x, y].IsEmpty)
+                if (grid[x, y].IsPieceEmpty)
                     return true;
             }
         }
@@ -143,7 +143,7 @@ public class BoardManager : MonoBehaviour
         {
             for (int y = 0; y < height; y++)
             {
-                if (!grid[x, y].IsEmpty)
+                if (!grid[x, y].IsPieceEmpty)
                     result.Add(grid[x, y]);
             }
         }
@@ -162,7 +162,7 @@ public class BoardManager : MonoBehaviour
                 continue;
 
             CellData cell = GetCell(next);
-            if (cell == null || cell.IsEmpty || cell.CurrentPiece == null)
+            if (cell == null || cell.IsPieceEmpty || cell.CurrentPiece == null)
                 continue;
 
             result.Add(cell.CurrentPiece);
@@ -174,7 +174,7 @@ public class BoardManager : MonoBehaviour
     public bool IsCellEmpty(Vector2Int coord)
     {
         CellData cell = GetCell(coord);
-        return cell != null && cell.IsEmpty;
+        return cell != null && cell.IsPieceEmpty;
     }
 
     private void OnDrawGizmos()

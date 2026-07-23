@@ -216,7 +216,7 @@ MonoBehaviour:
   mainCamera: {fileID: 519420031}
   board: {fileID: 72704191}
   gameManager: {fileID: 324094663}
-  spawnPreviewPosition: {x: 0, y: 5, z: 0}
+  spawnPreviewPosition: {x: 0, y: -5, z: 0}
 --- !u!4 &110036468
 Transform:
   m_ObjectHideFlags: 0
@@ -583,6 +583,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MergeSystem
   board: {fileID: 72704191}
+  edgeTolerance: 0.1
+  overlapTolerance: 0.001
 --- !u!4 &1860977677
 Transform:
   m_ObjectHideFlags: 0

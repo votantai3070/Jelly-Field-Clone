@@ -4,6 +4,8 @@ using UnityEngine;
 public class MergeSystem : MonoBehaviour
 {
     [SerializeField] private BoardManager board;
+    [SerializeField] private float edgeTolerance = 0.001f;
+    [SerializeField] private float overlapTolerance = 0.001f;
 
     private static readonly Vector2Int[] Directions =
     {
@@ -21,7 +23,7 @@ public class MergeSystem : MonoBehaviour
             return false;
 
         CellData placedCell = board.GetCell(placedCoord);
-        if (placedCell == null || placedCell.IsEmpty || placedCell.CurrentPiece == null)
+        if (placedCell == null || placedCell.IsPieceEmpty || placedCell.CurrentPiece == null)
             return false;
 
         JellyPiece placedPiece = placedCell.CurrentPiece;
@@ -36,14 +38,20 @@ public class MergeSystem : MonoBehaviour
                 continue;
 
             CellData neighborCell = board.GetCell(neighborCoord);
-            if (neighborCell == null || neighborCell.IsEmpty || neighborCell.CurrentPiece == null)
+            if (neighborCell == null || neighborCell.IsPieceEmpty || neighborCell.CurrentPiece == null)
                 continue;
 
             JellyPiece neighborPiece = neighborCell.CurrentPiece;
             if (neighborPiece == placedPiece)
                 continue;
 
-            CollectEdgeMatches(placedPiece, neighborPiece, VectorToDirection(dir), unique);
+            CollectTouchPairsBetweenPieces(
+                placedPiece,
+                neighborPiece,
+                dir,
+                VectorToDirection(dir),
+                unique
+            );
         }
 
         foreach (var kv in unique)
@@ -52,203 +60,79 @@ public class MergeSystem : MonoBehaviour
         return matches.Count > 0;
     }
 
-    private void CollectEdgeMatches(JellyPiece sourcePiece, JellyPiece targetPiece, ContactDirection dir, Dictionary<string, MatchedSubCellData> unique)
+    private void CollectTouchPairsBetweenPieces(
+        JellyPiece sourcePiece,
+        JellyPiece targetPiece,
+        Vector2Int neighborOffset,
+        ContactDirection dir,
+        Dictionary<string, MatchedSubCellData> unique)
     {
-        List<JellySubCell> sourceEdge = GetEdgeSubCells(sourcePiece, dir);
-        List<JellySubCell> targetEdge = GetEdgeSubCells(targetPiece, Opposite(dir));
+        if (sourcePiece == null || targetPiece == null)
+            return;
 
-        for (int i = 0; i < sourceEdge.Count; i++)
+        Vector2 offset = new Vector2(neighborOffset.x, neighborOffset.y);
+
+        for (int i = 0; i < sourcePiece.SubCells.Count; i++)
         {
-            JellySubCell a = sourceEdge[i];
-            if (a == null)
+            JellySubCell sourceSub = sourcePiece.SubCells[i];
+            if (sourceSub == null || !sourceSub.HasValidRuntimeLayout)
                 continue;
 
-            for (int j = 0; j < targetEdge.Count; j++)
+            for (int j = 0; j < targetPiece.SubCells.Count; j++)
             {
-                JellySubCell b = targetEdge[j];
-                if (b == null)
+                JellySubCell targetSub = targetPiece.SubCells[j];
+                if (targetSub == null || !targetSub.HasValidRuntimeLayout)
                     continue;
 
-                if (a.color != b.color)
+                if (sourceSub.color != targetSub.color)
                     continue;
 
-                if (!SlotsActuallyTouch(a.slot, b.slot, dir))
+                Rect sourceRect = sourceSub.localRect;
+                Rect targetRect = OffsetRect(targetSub.localRect, offset);
+
+                if (!AreRectsTouching(sourceRect, targetRect, dir))
                     continue;
 
-                AddUnique(unique, sourcePiece, a);
-                AddUnique(unique, targetPiece, b);
+                AddUnique(unique, sourcePiece, sourceSub);
+                AddUnique(unique, targetPiece, targetSub);
             }
         }
     }
 
-    private List<JellySubCell> GetEdgeSubCells(JellyPiece piece, ContactDirection dir)
+    private Rect OffsetRect(Rect rect, Vector2 offset)
     {
-        List<JellySubCell> result = new List<JellySubCell>();
-        if (piece == null || piece.SubCells == null)
-            return result;
-
-        for (int i = 0; i < piece.SubCells.Count; i++)
-        {
-            JellySubCell sub = piece.SubCells[i];
-            if (sub == null)
-                continue;
-
-            if (IsOnEdge(sub.slot, dir))
-                result.Add(sub);
-        }
-
-        return result;
+        return new Rect(rect.x + offset.x, rect.y + offset.y, rect.width, rect.height);
     }
 
-    private bool IsOnEdge(JellySlot slot, ContactDirection dir)
+    private bool AreRectsTouching(Rect a, Rect b, ContactDirection dir)
     {
         switch (dir)
         {
             case ContactDirection.Up:
-                return slot == JellySlot.Full ||
-                       slot == JellySlot.Top ||
-                       slot == JellySlot.TopLeft ||
-                       slot == JellySlot.TopRight ||
-                       slot == JellySlot.Left ||
-                       slot == JellySlot.Right;
+                return Mathf.Abs(a.yMax - b.yMin) <= edgeTolerance &&
+                       GetOverlap(a.xMin, a.xMax, b.xMin, b.xMax) > overlapTolerance;
 
             case ContactDirection.Down:
-                return slot == JellySlot.Full ||
-                       slot == JellySlot.BottomLeft ||
-                       slot == JellySlot.BottomRight ||
-                       slot == JellySlot.Left ||
-                       slot == JellySlot.Right;
-
-            case ContactDirection.Left:
-                return slot == JellySlot.Full ||
-                       slot == JellySlot.Left ||
-                       slot == JellySlot.Top ||
-                       slot == JellySlot.TopLeft ||
-                       slot == JellySlot.BottomLeft;
+                return Mathf.Abs(a.yMin - b.yMax) <= edgeTolerance &&
+                       GetOverlap(a.xMin, a.xMax, b.xMin, b.xMax) > overlapTolerance;
 
             case ContactDirection.Right:
-                return slot == JellySlot.Full ||
-                       slot == JellySlot.Right ||
-                       slot == JellySlot.Top ||
-                       slot == JellySlot.TopRight ||
-                       slot == JellySlot.BottomRight;
-        }
-
-        return false;
-    }
-
-    private bool SlotsActuallyTouch(JellySlot a, JellySlot b, ContactDirection dir)
-    {
-        switch (dir)
-        {
-            case ContactDirection.Up:
-                return TouchUp(a, b);
-
-            case ContactDirection.Down:
-                return TouchDown(a, b);
+                return Mathf.Abs(a.xMax - b.xMin) <= edgeTolerance &&
+                       GetOverlap(a.yMin, a.yMax, b.yMin, b.yMax) > overlapTolerance;
 
             case ContactDirection.Left:
-                return TouchLeft(a, b);
-
-            case ContactDirection.Right:
-                return TouchRight(a, b);
+                return Mathf.Abs(a.xMin - b.xMax) <= edgeTolerance &&
+                       GetOverlap(a.yMin, a.yMax, b.yMin, b.yMax) > overlapTolerance;
         }
 
         return false;
     }
 
-    private bool TouchUp(JellySlot a, JellySlot b)
+    private float GetOverlap(float minA, float maxA, float minB, float maxB)
     {
-        if (a == JellySlot.Full)
-            return b == JellySlot.Full || b == JellySlot.Left || b == JellySlot.Right || b == JellySlot.BottomLeft || b == JellySlot.BottomRight;
-
-        if (a == JellySlot.Left)
-            return b == JellySlot.Full || b == JellySlot.BottomLeft;
-
-        if (a == JellySlot.Right)
-            return b == JellySlot.Full || b == JellySlot.BottomRight;
-
-        if (a == JellySlot.Top)
-            return b == JellySlot.BottomLeft || b == JellySlot.BottomRight;
-
-        if (a == JellySlot.TopLeft)
-            return b == JellySlot.BottomLeft;
-
-        if (a == JellySlot.TopRight)
-            return b == JellySlot.BottomRight;
-
-        return false;
-    }
-
-    private bool TouchDown(JellySlot a, JellySlot b)
-    {
-        if (a == JellySlot.Full)
-            return b == JellySlot.Full || b == JellySlot.Left || b == JellySlot.Right || b == JellySlot.Top || b == JellySlot.TopLeft || b == JellySlot.TopRight;
-
-        if (a == JellySlot.Left)
-            return b == JellySlot.Full || b == JellySlot.TopLeft;
-
-        if (a == JellySlot.Right)
-            return b == JellySlot.Full || b == JellySlot.TopRight;
-
-        if (a == JellySlot.BottomLeft)
-            return b == JellySlot.Top || b == JellySlot.TopLeft;
-
-        if (a == JellySlot.BottomRight)
-            return b == JellySlot.Top || b == JellySlot.TopRight;
-
-        return false;
-    }
-
-    private bool TouchLeft(JellySlot a, JellySlot b)
-    {
-        if (a == JellySlot.Full)
-            return b == JellySlot.Full || b == JellySlot.Right || b == JellySlot.TopRight || b == JellySlot.BottomRight;
-
-        if (a == JellySlot.Left)
-            return b == JellySlot.Full || b == JellySlot.Right;
-
-        if (a == JellySlot.Top)
-            return b == JellySlot.Right || b == JellySlot.TopRight;
-
-        if (a == JellySlot.TopLeft)
-            return b == JellySlot.TopRight;
-
-        if (a == JellySlot.BottomLeft)
-            return b == JellySlot.BottomRight;
-
-        return false;
-    }
-
-    private bool TouchRight(JellySlot a, JellySlot b)
-    {
-        if (a == JellySlot.Full)
-            return b == JellySlot.Full || b == JellySlot.Left || b == JellySlot.TopLeft || b == JellySlot.BottomLeft;
-
-        if (a == JellySlot.Right)
-            return b == JellySlot.Full || b == JellySlot.Left;
-
-        if (a == JellySlot.Top)
-            return b == JellySlot.Left || b == JellySlot.TopLeft;
-
-        if (a == JellySlot.TopRight)
-            return b == JellySlot.TopLeft;
-
-        if (a == JellySlot.BottomRight)
-            return b == JellySlot.BottomLeft;
-
-        return false;
-    }
-
-    private ContactDirection Opposite(ContactDirection dir)
-    {
-        switch (dir)
-        {
-            case ContactDirection.Up: return ContactDirection.Down;
-            case ContactDirection.Down: return ContactDirection.Up;
-            case ContactDirection.Left: return ContactDirection.Right;
-            default: return ContactDirection.Left;
-        }
+        float min = Mathf.Max(minA, minB);
+        float max = Mathf.Min(maxA, maxB);
+        return Mathf.Max(0f, max - min);
     }
 
     private void AddUnique(
@@ -278,22 +162,5 @@ public class MergeSystem : MonoBehaviour
         if (dir == Vector2Int.right) return ContactDirection.Right;
         if (dir == Vector2Int.down) return ContactDirection.Down;
         return ContactDirection.Left;
-    }
-}
-
-[System.Serializable]
-public class MatchedSubCellData
-{
-    public JellyPiece piece;
-    public string subCellId;
-    public JellyColor color;
-    public JellySlot slot;
-
-    public MatchedSubCellData(JellyPiece piece, string subCellId, JellyColor color, JellySlot slot)
-    {
-        this.piece = piece;
-        this.subCellId = subCellId;
-        this.color = color;
-        this.slot = slot;
     }
 }

@@ -63,6 +63,7 @@
   <ItemGroup>
     <Compile Include="Assets\Scripts\Data\JellyColor.cs" />
     <Compile Include="Assets\Scripts\JellyPopEffect.cs" />
+    <Compile Include="Assets\Scripts\Data\MatchedSubCellData.cs" />
     <Compile Include="Assets\Scripts\JellyPiece.cs" />
     <Compile Include="Assets\Scripts\JellyAnimation.cs" />
     <Compile Include="Assets\Scripts\Data\CellData.cs" />
@@ -72,6 +73,7 @@
     <Compile Include="Assets\Scripts\UI\InputHandler.cs" />
     <Compile Include="Assets\Scripts\Data\JellySubCell.cs" />
     <Compile Include="Assets\Scripts\UI\GridVisual.cs" />
+    <Compile Include="Assets\Scripts\Data\LayoutSlotData.cs" />
     <Compile Include="Assets\Scripts\Data\JellySlot.cs" />
     <Compile Include="Assets\Scripts\Data\ContactDirection.cs" />
     <Compile Include="Assets\Scripts\Data\LevelGoalData.cs" />

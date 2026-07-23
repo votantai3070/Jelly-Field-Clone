@@ -7,7 +7,7 @@ public class CellData
     public JellyPiece OccupiedPiece;
 
     public JellyPiece CurrentPiece => OccupiedPiece;
-    public bool IsEmpty => OccupiedPiece == null;
+    public bool IsPieceEmpty => OccupiedPiece == null;
 
     public CellData(Vector2Int coord)
     {
