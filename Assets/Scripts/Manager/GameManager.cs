@@ -34,23 +34,23 @@ public class GameManager : MonoBehaviour
     private void Start()
     {
         ValidateReferences();
+    }
 
+    private void NotifyGoalUI()
+    {
         if (levelData != null)
-        {
-            board.ConfigureBoard(levelData.width, levelData.height);
-            goalSystem.Initialize(levelData);
-            goalSystem.OnWin += HandleWin;
             OnGoalObjectiveUIChanged?.Invoke(levelData);
-        }
-
-        if (inputHandler != null && !IsGameEnded)
-            inputHandler.SpawnNextPiece();
     }
 
     private void OnDestroy()
     {
         if (goalSystem != null)
             goalSystem.OnWin -= HandleWin;
+    }
+
+    public LevelGoalData GetCurrentLevelData()
+    {
+        return levelData;
     }
 
     private void ValidateReferences()
@@ -62,6 +62,42 @@ public class GameManager : MonoBehaviour
         if (jellyPrefab == null) Debug.LogError("GameManager missing JellyPrefab");
         if (inputHandler == null) Debug.LogWarning("GameManager missing InputHandler");
         if (jellyPopEffectPrefab == null) Debug.LogWarning("GameManager missing JellyPopEffect prefab");
+    }
+
+    private void OnEnable()
+    {
+        if (goalSystem != null)
+            goalSystem.OnWin += HandleWin;
+    }
+
+    public void InitializeLevel(LevelGoalData levelGoal)
+    {
+        ResetCurrentLevelRuntime();
+
+        if (levelGoal != null)
+        {
+            levelData = levelGoal;
+            board.ConfigureBoard(levelData.width, levelData.height);
+            goalSystem.Initialize(levelData);
+            OnGoalObjectiveUIChanged?.Invoke(levelData);
+        }
+
+        if (inputHandler != null && !IsGameEnded)
+            inputHandler.SpawnNextPiece();
+    }
+
+    public void ResetCurrentLevelRuntime()
+    {
+        StopAllCoroutines();
+
+        IsGameEnded = false;
+        IsResolving = false;
+
+        if (inputHandler != null)
+            inputHandler.ClearCurrentPiece();
+
+        if (board != null)
+            board.ClearBoardRuntime();
     }
 
     public JellyPiece GetNextPiecePrefab()
@@ -163,7 +199,7 @@ public class GameManager : MonoBehaviour
         if (IsGameEnded || IsResolving)
             return;
 
-        Debug.Log("ResolveTurn at: " + placedCoord + " piece: " + placedPiece.name);
+        //Debug.Log("ResolveTurn at: " + placedCoord + " piece: " + placedPiece.name);
         StartCoroutine(ResolveTurnRoutine(placedCoord));
     }
 

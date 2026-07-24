@@ -47,7 +47,13 @@ TagManager:
   - name: Cell
     uniqueID: 1772864439
     locked: 0
-  - name: Jelly
+  - name: JellyEffect
+    uniqueID: 589693561
+    locked: 0
+  - name: JellyRoot
+    uniqueID: 3698485781
+    locked: 0
+  - name: JellyCell
     uniqueID: 857301775
     locked: 0
   m_RenderingLayers:

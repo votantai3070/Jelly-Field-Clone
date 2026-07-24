@@ -6,11 +6,6 @@ public class GridVisual : MonoBehaviour
     [SerializeField] private GameObject cellVisualPrefab;
     [SerializeField] private Transform container;
 
-    private void Start()
-    {
-        GenerateGridVisual();
-    }
-
     public void GenerateGridVisual()
     {
         if (board == null || cellVisualPrefab == null) return;

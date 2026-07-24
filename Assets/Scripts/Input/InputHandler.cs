@@ -162,7 +162,44 @@ public class InputHandler : MonoBehaviour
             return;
         }
 
-        currentPiece = Instantiate(prefab, spawnPreviewPosition, Quaternion.identity);
+        Vector3 spawnPos = GetSpawnPreviewWorldPosition();
+        currentPiece = Instantiate(prefab, spawnPos, Quaternion.identity);
         gameManager.SetupSpawnedPiece(currentPiece);
+    }
+
+    private Vector3 GetSpawnPreviewWorldPosition()
+    {
+        if (mainCamera == null)
+            return spawnPreviewPosition;
+
+        Vector3 viewPos = mainCamera.ViewportToWorldPoint(
+            new Vector3(0.5f, 0.2f, Mathf.Abs(mainCamera.transform.position.z))
+        );
+
+        viewPos.z = 0f;
+        return viewPos;
+    }
+
+    public void ClearCurrentPiece()
+    {
+        if (selectedPiece != null && selectedPiece == currentPiece)
+        {
+            Destroy(selectedPiece.gameObject);
+            selectedPiece = null;
+            currentPiece = null;
+        }
+        else
+        {
+            if (selectedPiece != null)
+                Destroy(selectedPiece.gameObject);
+
+            if (currentPiece != null)
+                Destroy(currentPiece.gameObject);
+
+            selectedPiece = null;
+            currentPiece = null;
+        }
+
+        dragVelocity = Vector3.zero;
     }
 }

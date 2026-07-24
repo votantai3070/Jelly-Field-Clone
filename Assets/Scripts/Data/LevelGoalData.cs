@@ -5,6 +5,7 @@ using UnityEngine;
 [CreateAssetMenu(fileName = "LevelGoalData", menuName = "JellyField/Level Goal Data")]
 public class LevelGoalData : ScriptableObject
 {
+    public int level;
     public int width = 6;
     public int height = 8;
     public int winCoinReward = 50;

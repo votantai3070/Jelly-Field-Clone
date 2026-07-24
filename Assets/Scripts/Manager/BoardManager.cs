@@ -3,6 +3,9 @@ using UnityEngine;
 
 public class BoardManager : MonoBehaviour
 {
+    private GridVisual gridVisual;
+    private Camera cam;
+
     [Header("Board Settings")]
     [SerializeField] private int width = 6;
     [SerializeField] private int height = 8;
@@ -29,14 +32,20 @@ public class BoardManager : MonoBehaviour
 
     private void Awake()
     {
-        InitBoard();
+        gridVisual = GetComponent<GridVisual>();
+        cam = Camera.main;
     }
 
     public void ConfigureBoard(int newWidth, int newHeight)
     {
         width = Mathf.Max(1, newWidth);
         height = Mathf.Max(1, newHeight);
+
+        if (cam != null)
+            CenterBoardToCamera(cam);
+
         InitBoard();
+        gridVisual.GenerateGridVisual();
     }
 
     public void InitBoard()
@@ -71,6 +80,26 @@ public class BoardManager : MonoBehaviour
             return null;
 
         return grid[coord.x, coord.y];
+    }
+
+    public void CenterBoardToCamera(Camera cam)
+    {
+        if (cam == null)
+            return;
+
+        Vector3 center = cam.ViewportToWorldPoint(
+            new Vector3(0.5f, 0.5f, Mathf.Abs(cam.transform.position.z))
+        );
+
+        SetBoardCenter(new Vector2(center.x, center.y));
+    }
+
+    public void SetBoardCenter(Vector2 centerWorld)
+    {
+        origin = centerWorld - new Vector2(
+            (width - 1) * cellSize * 0.5f,
+            (height - 1) * cellSize * 0.5f
+        );
     }
 
     public Vector2 GridToWorld(Vector2Int coord)
@@ -182,6 +211,30 @@ public class BoardManager : MonoBehaviour
     {
         CellData cell = GetCell(coord);
         return cell != null && cell.IsPieceEmpty;
+    }
+
+    public void ClearBoardRuntime()
+    {
+        if (grid != null)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                for (int y = 0; y < height; y++)
+                {
+                    CellData cell = grid[x, y];
+                    if (cell == null || cell.IsPieceEmpty)
+                        continue;
+
+                    JellyPiece piece = cell.CurrentPiece;
+                    if (piece != null)
+                        Destroy(piece.gameObject);
+
+                    cell.Clear();
+                }
+            }
+        }
+
+        grid = null;
     }
 
     private void OnDrawGizmos()

@@ -70,7 +70,10 @@
     <Compile Include="Assets\Scripts\BoardCameraFitter.cs" />
     <Compile Include="Assets\Scripts\JellyAnimation.cs" />
     <Compile Include="Assets\Scripts\Data\CellData.cs" />
+    <Compile Include="Assets\Scripts\UI\WinButton.cs" />
+    <Compile Include="Assets\Scripts\Manager\LevelManager.cs" />
     <Compile Include="Assets\Scripts\Manager\GameManager.cs" />
+    <Compile Include="Assets\Scripts\UI\ChangeLevelScene.cs" />
     <Compile Include="Assets\Scripts\UI\GoalObjectiveUI.cs" />
     <Compile Include="Assets\Scripts\System\MergeSystem.cs" />
     <Compile Include="Assets\Scripts\Manager\BoardManager.cs" />

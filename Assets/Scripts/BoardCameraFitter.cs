@@ -14,13 +14,18 @@ public class BoardCameraFitter : MonoBehaviour
 
         float boardWidth = board.Width * board.CellSize;
         float boardHeight = board.Height * board.CellSize;
-
         float aspect = (float)Screen.width / Screen.height;
 
         float orthoByHeight = (boardHeight * 0.5f) + extraPadding;
         float orthoByWidth = (boardWidth * 0.5f) / aspect + extraPadding;
 
         targetCamera.orthographicSize = Mathf.Max(orthoByHeight, orthoByWidth);
+
+        Vector3 center = targetCamera.ViewportToWorldPoint(
+            new Vector3(0.5f, 0.5f, Mathf.Abs(targetCamera.transform.position.z))
+        );
+
+        board.SetBoardCenter(new Vector2(center.x, center.y));
 
         Vector3 boardCenter = board.GetBoardCenterWorld();
         targetCamera.transform.position = new Vector3(boardCenter.x, boardCenter.y, targetCamera.transform.position.z);

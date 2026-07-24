@@ -88,7 +88,7 @@ public class GoalSystem : MonoBehaviour
         }
 
         IsWin = true;
-        Debug.Log("GoalSystem: WIN");
+        UI.Instance.winPanel.SetActive(true);
         OnWin?.Invoke();
     }
 }
