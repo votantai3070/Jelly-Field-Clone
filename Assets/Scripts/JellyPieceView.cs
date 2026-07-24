@@ -44,7 +44,11 @@ public class JellyPieceView : MonoBehaviour
         }
     }
 
-    //  Tính bố cục các phần của jelly dựa trên số lượng subcell
+    public void ClearVisualsForPool()
+    {
+        ClearVisuals();
+    }
+
     private List<LayoutSlotData> BuildLayout(int count)
     {
         List<LayoutSlotData> result = new List<LayoutSlotData>();

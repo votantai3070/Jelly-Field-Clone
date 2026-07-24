@@ -11,8 +11,11 @@ public class UI : MonoBehaviour
     [SerializeField] private LevelManager levelManager;
 
     [SerializeField] private TextMeshProUGUI levelText;
+
+    [Space]
     [SerializeField] private GameObject playPanel;
     public GameObject winPanel;
+    public GameObject losePanel;
 
     private GoalObjectiveUI goalObjective;
 
@@ -52,9 +55,10 @@ public class UI : MonoBehaviour
         winPanel.SetActive(false);
     }
 
-    public void Retry()
+    public void RetryBtn()
     {
-
+        levelManager.Retry();
+        losePanel.SetActive(false);
     }
 
     private void SetupGoalObjective(LevelGoalData levelGoal)

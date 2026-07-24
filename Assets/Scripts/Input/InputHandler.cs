@@ -7,6 +7,9 @@ public class InputHandler : MonoBehaviour
     [SerializeField] private GameManager gameManager;
     [SerializeField] private Vector3 spawnPreviewPosition = new Vector3(0f, 3.5f, 0f);
 
+    [Header("Pooling")]
+    [SerializeField] private string jellyPoolTag = "JellyPiece";
+
     [Header("Drag Feel")]
     [SerializeField] private float dragSmoothTime = 0.045f;
     [SerializeField] private float dragMaxSpeed = 30f;
@@ -38,8 +41,13 @@ public class InputHandler : MonoBehaviour
 
     private void HandleTouch()
     {
+        if (mainCamera == null)
+            return;
+
         Touch touch = Input.GetTouch(0);
-        Vector3 world = mainCamera.ScreenToWorldPoint(new Vector3(touch.position.x, touch.position.y, 0f));
+        Vector3 world = mainCamera.ScreenToWorldPoint(
+            new Vector3(touch.position.x, touch.position.y, Mathf.Abs(mainCamera.transform.position.z))
+        );
         world.z = 0f;
 
         switch (touch.phase)
@@ -55,7 +63,7 @@ public class InputHandler : MonoBehaviour
 
             case TouchPhase.Ended:
             case TouchPhase.Canceled:
-                ReleaseSelectedPiece(world);
+                ReleaseSelectedPiece();
                 break;
         }
     }
@@ -118,9 +126,9 @@ public class InputHandler : MonoBehaviour
         lastPiecePosition = next;
     }
 
-    private void ReleaseSelectedPiece(Vector3 worldPos)
+    private void ReleaseSelectedPiece()
     {
-        if (selectedPiece == null)
+        if (selectedPiece == null || board == null)
             return;
 
         Vector2Int coord = board.WorldToGrid(selectedPiece.transform.position);
@@ -135,7 +143,8 @@ public class InputHandler : MonoBehaviour
             currentPiece = null;
             dragVelocity = Vector3.zero;
 
-            gameManager.ResolveTurn(placedPiece, coord);
+            if (gameManager != null)
+                gameManager.ResolveTurn(placedPiece, coord);
         }
         else
         {
@@ -155,15 +164,28 @@ public class InputHandler : MonoBehaviour
         if (currentPiece != null)
             return;
 
-        JellyPiece prefab = gameManager.GetNextPiecePrefab();
-        if (prefab == null)
+        if (ObjectPool.Instance == null)
         {
-            Debug.LogError("SpawnNextPiece failed: prefab is null");
+            Debug.LogError("SpawnNextPiece failed: ObjectPool.Instance is null");
             return;
         }
 
         Vector3 spawnPos = GetSpawnPreviewWorldPosition();
-        currentPiece = Instantiate(prefab, spawnPos, Quaternion.identity);
+        JellyPiece piece = ObjectPool.Instance.Spawn<JellyPiece>(
+            jellyPoolTag,
+            null
+        );
+
+        if (piece == null)
+        {
+            Debug.LogError($"SpawnNextPiece failed: pool tag '{jellyPoolTag}' not found or missing JellyPiece component");
+            return;
+        }
+
+        piece.transform.SetPositionAndRotation(spawnPos, Quaternion.identity);
+        piece.transform.localScale = Vector3.one;
+
+        currentPiece = piece;
         gameManager.SetupSpawnedPiece(currentPiece);
     }
 
@@ -182,19 +204,25 @@ public class InputHandler : MonoBehaviour
 
     public void ClearCurrentPiece()
     {
+        if (ObjectPool.Instance == null)
+        {
+            Debug.LogError("ClearCurrentPiece failed: ObjectPool.Instance is null");
+            return;
+        }
+
         if (selectedPiece != null && selectedPiece == currentPiece)
         {
-            Destroy(selectedPiece.gameObject);
+            ObjectPool.Instance.Despawn(selectedPiece.gameObject);
             selectedPiece = null;
             currentPiece = null;
         }
         else
         {
             if (selectedPiece != null)
-                Destroy(selectedPiece.gameObject);
+                ObjectPool.Instance.Despawn(selectedPiece.gameObject);
 
             if (currentPiece != null)
-                Destroy(currentPiece.gameObject);
+                ObjectPool.Instance.Despawn(currentPiece.gameObject);
 
             selectedPiece = null;
             currentPiece = null;

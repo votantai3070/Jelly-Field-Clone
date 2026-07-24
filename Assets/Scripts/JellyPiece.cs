@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class JellyPiece : MonoBehaviour
+public class JellyPiece : MonoBehaviour, IPoolable
 {
     [SerializeField] private BoxCollider2D boxCollider;
     [SerializeField] private JellyAnimation jellyAnimation;
@@ -15,7 +15,7 @@ public class JellyPiece : MonoBehaviour
 
     public void Setup(List<JellySubCell> newSubCells)
     {
-        subCells = newSubCells;
+        subCells = newSubCells ?? new List<JellySubCell>();
         RefreshVisual();
     }
 
@@ -27,6 +27,7 @@ public class JellyPiece : MonoBehaviour
 
     public void ClearCoord()
     {
+        CurrentCoord = default;
         HasCell = false;
     }
 
@@ -144,25 +145,63 @@ public class JellyPiece : MonoBehaviour
             onComplete?.Invoke();
     }
 
-    //private List<JellySubCell> CloneSubCells(List<JellySubCell> source)
-    //{
-    //    List<JellySubCell> clone = new List<JellySubCell>();
+    public void OnSpawned()
+    {
+        ClearCoord();
 
-    //    if (source == null)
-    //        return clone;
+        if (subCells == null)
+            subCells = new List<JellySubCell>();
+        else
+            subCells.Clear();
 
-    //    for (int i = 0; i < source.Count; i++)
-    //    {
-    //        if (source[i] == null)
-    //            continue;
+        if (pieceView == null)
+            pieceView = GetComponentInChildren<JellyPieceView>();
 
-    //        string newId = string.IsNullOrEmpty(source[i].id)
-    //            ? Guid.NewGuid().ToString()
-    //            : source[i].id;
+        if (jellyAnimation == null)
+            jellyAnimation = GetComponent<JellyAnimation>();
 
-    //        clone.Add(new JellySubCell(newId, source[i].color));
-    //    }
+        if (pieceView != null)
+            pieceView.ClearVisualsForPool();
 
-    //    return clone;
-    //}
+        if (jellyAnimation != null)
+        {
+            jellyAnimation.StopAllCoroutines();
+            jellyAnimation.SetBaseScale(Vector3.one);
+        }
+
+        if (boxCollider != null)
+            boxCollider.size = Vector2.one;
+
+        transform.localScale = Vector3.one;
+    }
+
+    public void OnDespawned()
+    {
+        ClearCoord();
+
+        if (subCells == null)
+            subCells = new List<JellySubCell>();
+        else
+            subCells.Clear();
+
+        if (pieceView == null)
+            pieceView = GetComponentInChildren<JellyPieceView>();
+
+        if (jellyAnimation == null)
+            jellyAnimation = GetComponent<JellyAnimation>();
+
+        if (pieceView != null)
+            pieceView.ClearVisualsForPool();
+
+        if (jellyAnimation != null)
+        {
+            jellyAnimation.StopAllCoroutines();
+            jellyAnimation.SetBaseScale(Vector3.one);
+        }
+
+        if (boxCollider != null)
+            boxCollider.size = Vector2.one;
+
+        transform.localScale = Vector3.one;
+    }
 }

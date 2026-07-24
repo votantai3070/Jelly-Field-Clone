@@ -38,6 +38,8 @@ public class BoardManager : MonoBehaviour
 
     public void ConfigureBoard(int newWidth, int newHeight)
     {
+        ClearBoardRuntime();
+
         width = Mathf.Max(1, newWidth);
         height = Mathf.Max(1, newHeight);
 
@@ -45,7 +47,9 @@ public class BoardManager : MonoBehaviour
             CenterBoardToCamera(cam);
 
         InitBoard();
-        gridVisual.GenerateGridVisual();
+
+        if (gridVisual != null)
+            gridVisual.GenerateGridVisual();
     }
 
     public void InitBoard()
@@ -76,7 +80,7 @@ public class BoardManager : MonoBehaviour
 
     public CellData GetCell(Vector2Int coord)
     {
-        if (!IsInsideGrid(coord))
+        if (!IsInsideGrid(coord) || grid == null)
             return null;
 
         return grid[coord.x, coord.y];
@@ -133,7 +137,7 @@ public class BoardManager : MonoBehaviour
         targetCell.SetPiece(piece);
         piece.SetCoord(targetCoord);
         piece.transform.position = GridToWorld(targetCoord);
-        piece.PlayLanding(); // Animation
+        piece.PlayLanding();
 
         return true;
     }
@@ -226,8 +230,16 @@ public class BoardManager : MonoBehaviour
                         continue;
 
                     JellyPiece piece = cell.CurrentPiece;
+
                     if (piece != null)
-                        Destroy(piece.gameObject);
+                    {
+                        piece.ClearCoord();
+
+                        if (ObjectPool.Instance != null)
+                            ObjectPool.Instance.Despawn(piece.gameObject);
+                        else
+                            Destroy(piece.gameObject);
+                    }
 
                     cell.Clear();
                 }

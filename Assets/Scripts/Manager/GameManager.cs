@@ -36,16 +36,22 @@ public class GameManager : MonoBehaviour
         ValidateReferences();
     }
 
+    private void OnEnable()
+    {
+        if (goalSystem != null)
+            goalSystem.OnWin += HandleWin;
+    }
+
+    private void OnDisable()
+    {
+        if (goalSystem != null)
+            goalSystem.OnWin -= HandleWin;
+    }
+
     private void NotifyGoalUI()
     {
         if (levelData != null)
             OnGoalObjectiveUIChanged?.Invoke(levelData);
-    }
-
-    private void OnDestroy()
-    {
-        if (goalSystem != null)
-            goalSystem.OnWin -= HandleWin;
     }
 
     public LevelGoalData GetCurrentLevelData()
@@ -64,12 +70,6 @@ public class GameManager : MonoBehaviour
         if (jellyPopEffectPrefab == null) Debug.LogWarning("GameManager missing JellyPopEffect prefab");
     }
 
-    private void OnEnable()
-    {
-        if (goalSystem != null)
-            goalSystem.OnWin += HandleWin;
-    }
-
     public void InitializeLevel(LevelGoalData levelGoal)
     {
         ResetCurrentLevelRuntime();
@@ -79,7 +79,7 @@ public class GameManager : MonoBehaviour
             levelData = levelGoal;
             board.ConfigureBoard(levelData.width, levelData.height);
             goalSystem.Initialize(levelData);
-            OnGoalObjectiveUIChanged?.Invoke(levelData);
+            NotifyGoalUI();
         }
 
         if (inputHandler != null && !IsGameEnded)
@@ -133,16 +133,15 @@ public class GameManager : MonoBehaviour
         return result;
     }
 
-    // Random màu kh trùng với subcell liền kề
     private JellyColor GetRandomColorExceptAdjacent(List<JellySubCell> current, int count, int index)
     {
         List<JellyColor> candidates = new List<JellyColor>
-    {
-        JellyColor.Red,
-        JellyColor.Yellow,
-        JellyColor.Blue,
-        JellyColor.Green
-    };
+        {
+            JellyColor.Red,
+            JellyColor.Yellow,
+            JellyColor.Blue,
+            JellyColor.Green
+        };
 
         for (int j = 0; j < index; j++)
         {
@@ -159,7 +158,6 @@ public class GameManager : MonoBehaviour
         return candidates[UnityEngine.Random.Range(0, candidates.Count)];
     }
 
-    //  Xác định subcell kề nhau trong cùng jelly
     private bool AreSubCellsAdjacentInSameJelly(int count, int a, int b)
     {
         if (a == b)
@@ -169,9 +167,7 @@ public class GameManager : MonoBehaviour
             return false;
 
         if (count == 2)
-        {
             return (a == 0 && b == 1) || (a == 1 && b == 0);
-        }
 
         if (count == 3)
         {
@@ -199,7 +195,6 @@ public class GameManager : MonoBehaviour
         if (IsGameEnded || IsResolving)
             return;
 
-        //Debug.Log("ResolveTurn at: " + placedCoord + " piece: " + placedPiece.name);
         StartCoroutine(ResolveTurnRoutine(placedCoord));
     }
 
@@ -314,6 +309,7 @@ public class GameManager : MonoBehaviour
         {
             IsGameEnded = true;
             Debug.Log("LOSE - Board Full");
+            UI.Instance.losePanel.SetActive(true);
             IsResolving = false;
             yield break;
         }
@@ -373,7 +369,11 @@ public class GameManager : MonoBehaviour
                 if (piece != null)
                 {
                     SpawnPopEffect(piece.transform.position, piece);
-                    Destroy(piece.gameObject);
+
+                    if (ObjectPool.Instance != null)
+                        ObjectPool.Instance.Despawn(piece.gameObject);
+                    else
+                        Destroy(piece.gameObject);
                 }
 
                 completedCount++;
