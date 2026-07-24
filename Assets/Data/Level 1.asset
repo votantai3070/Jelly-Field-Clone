@@ -17,7 +17,7 @@ MonoBehaviour:
   height: 3
   winCoinReward: 50
   goals:
-  - color: 0
-    required: 2
-  - color: 1
+  - color: 3
+    required: 4
+  - color: 2
     required: 4

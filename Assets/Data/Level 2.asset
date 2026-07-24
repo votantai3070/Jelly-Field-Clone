@@ -18,8 +18,4 @@ MonoBehaviour:
   winCoinReward: 50
   goals:
   - color: 0
-    required: 2
-  - color: 1
-    required: 4
-  - color: 2
-    required: 4
+    required: 8

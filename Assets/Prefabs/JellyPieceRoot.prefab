@@ -78,7 +78,7 @@ SpriteRenderer:
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: -596481515
-  m_SortingLayer: 3
+  m_SortingLayer: 4
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_Sprite: {fileID: 7482667652216324306, guid: 311925a002f4447b3a28927169b83ea6, type: 3}
@@ -283,22 +283,55 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::JellyAnimation
   visualRoot: {fileID: 7401362457190954067}
-  playIdle: 1
-  idleSpeed: 2.2
-  idleAmount: 0.04
-  dragJiggleSpeed: 18
-  dragJiggleAmountX: 0.08
-  dragJiggleAmountY: 0.06
-  dragStretchAmount: 0.12
-  dragReturnTime: 0.08
-  landSquashX: 1.14
-  landSquashY: 0.86
-  landRecoverTime: 0.12
-  preCollectPunchScale: 1.12
-  preCollectTime: 0.08
-  collectMoveTime: 0.16
-  collectShrinkTime: 0.1
+  playIdle: 0
+  idleSpeed: 2.1
+  idleAmountX: 0.025
+  idleAmountY: 0.03
+  idleSecondaryWave: 0.012
+  dragJiggleSpeed: 15
+  dragJiggleAmountX: 0.05
+  dragJiggleAmountY: 0.04
+  dragStretchAmount: 0.16
+  dragTiltAmount: 10
+  dragReturnTime: 0.16
+  landSquashX: 1.18
+  landSquashY: 0.82
+  landBounceX: 0.92
+  landBounceY: 1.08
+  landRecoverTime: 0.2
+  preCollectPunchScale: 1.16
+  preCollectOvershootScale: 0.94
+  preCollectTime: 0.12
+  collectMoveTime: 0.2
+  collectShrinkTime: 0.12
+  collectStretchAlongPath: 0.14
+  springOscillationCount: 2.5
+  springDamping: 6.5
   easeOut:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  easeInOut:
     serializedVersion: 2
     m_Curve:
     - serializedVersion: 3

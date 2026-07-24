@@ -19,6 +19,7 @@ public class GameManager : MonoBehaviour
 
     [Header("Effects")]
     [SerializeField] private JellyPopEffect jellyPopEffectPrefab;
+    [SerializeField] private string jellyPopEffectPoolTag = "JellyPopEffect";
 
     [Header("Timing")]
     [SerializeField] private float preCollectPulseDelay = 0.06f;
@@ -410,7 +411,7 @@ public class GameManager : MonoBehaviour
         if (jellyPopEffectPrefab == null || piece == null)
             return;
 
-        JellyPopEffect fx = Instantiate(jellyPopEffectPrefab, position, Quaternion.identity);
+        JellyPopEffect fx = ObjectPool.Instance.Spawn(jellyPopEffectPoolTag, position, Quaternion.identity, null).GetComponent<JellyPopEffect>();
         fx.Play(GetColorFromJelly(piece));
     }
 
