@@ -1,11 +1,13 @@
 using UnityEngine;
+using UnityEngine.InputSystem.EnhancedTouch;
+using EnhancedTouch = UnityEngine.InputSystem.EnhancedTouch.Touch;
+using TouchPhase = UnityEngine.InputSystem.TouchPhase;
 
 public class InputHandler : MonoBehaviour
 {
     [SerializeField] private Camera mainCamera;
     [SerializeField] private BoardManager board;
     [SerializeField] private GameManager gameManager;
-    [SerializeField] private Vector3 spawnPreviewPosition = new Vector3(0f, 3.5f, 0f);
 
     [Header("Pooling")]
     [SerializeField] private string jellyPoolTag = "JellyPiece";
@@ -22,10 +24,26 @@ public class InputHandler : MonoBehaviour
     private Vector3 dragVelocity;
     private Vector3 lastPiecePosition;
 
-    private void Start()
+    private int activeFingerId = -1;
+
+    private void Awake()
     {
         if (mainCamera == null)
             mainCamera = Camera.main;
+    }
+
+    private void OnEnable()
+    {
+        EnhancedTouchSupport.Enable();
+    }
+
+    private void OnDisable()
+    {
+        if (selectedPiece != null)
+            ReleaseSelectedPieceForced();
+
+        EnhancedTouchSupport.Disable();
+        activeFingerId = -1;
     }
 
     private void Update()
@@ -33,9 +51,7 @@ public class InputHandler : MonoBehaviour
         if (gameManager == null || gameManager.IsGameEnded || gameManager.IsResolving)
             return;
 
-        if (Input.touchCount > 0)
-            HandleTouch();
-
+        HandleTouch();
         UpdateDraggedPieceFollow();
     }
 
@@ -44,35 +60,67 @@ public class InputHandler : MonoBehaviour
         if (mainCamera == null)
             return;
 
-        Touch touch = Input.GetTouch(0);
-        Vector3 world = mainCamera.ScreenToWorldPoint(
-            new Vector3(touch.position.x, touch.position.y, Mathf.Abs(mainCamera.transform.position.z))
-        );
-        world.z = 0f;
+        var touches = EnhancedTouch.activeTouches;
+        if (touches.Count == 0)
+            return;
 
-        switch (touch.phase)
+        if (activeFingerId == -1)
         {
-            case TouchPhase.Began:
-                TrySelectPiece(world);
-                break;
+            for (int i = 0; i < touches.Count; i++)
+            {
+                var touch = touches[i];
+                if (touch.phase != TouchPhase.Began)
+                    continue;
 
-            case TouchPhase.Moved:
-            case TouchPhase.Stationary:
-                DragSelectedPiece(world);
-                break;
+                Vector3 world = ScreenToWorld(touch.screenPosition);
+                if (TrySelectPiece(world))
+                {
+                    activeFingerId = touch.touchId;
+                    break;
+                }
+            }
 
-            case TouchPhase.Ended:
-            case TouchPhase.Canceled:
-                ReleaseSelectedPiece();
-                break;
+            return;
+        }
+
+        for (int i = 0; i < touches.Count; i++)
+        {
+            var touch = touches[i];
+            if (touch.touchId != activeFingerId)
+                continue;
+
+            Vector3 world = ScreenToWorld(touch.screenPosition);
+
+            switch (touch.phase)
+            {
+                case TouchPhase.Moved:
+                case TouchPhase.Stationary:
+                    DragSelectedPiece(world);
+                    return;
+
+                case TouchPhase.Ended:
+                case TouchPhase.Canceled:
+                    ReleaseSelectedPiece();
+                    activeFingerId = -1;
+                    return;
+            }
         }
     }
 
-    private void TrySelectPiece(Vector3 worldPos)
+    private Vector3 ScreenToWorld(Vector2 screenPos)
+    {
+        Vector3 world = mainCamera.ScreenToWorldPoint(
+            new Vector3(screenPos.x, screenPos.y, Mathf.Abs(mainCamera.transform.position.z))
+        );
+        world.z = 0f;
+        return world;
+    }
+
+    private bool TrySelectPiece(Vector3 worldPos)
     {
         Collider2D[] hits = Physics2D.OverlapPointAll(worldPos);
         if (hits == null || hits.Length == 0)
-            return;
+            return false;
 
         JellyPiece piece = null;
 
@@ -84,7 +132,7 @@ public class InputHandler : MonoBehaviour
         }
 
         if (piece == null || piece != currentPiece)
-            return;
+            return false;
 
         selectedPiece = piece;
         selectedStartPosition = piece.transform.position;
@@ -94,6 +142,7 @@ public class InputHandler : MonoBehaviour
         lastPiecePosition = selectedPiece.transform.position;
 
         selectedPiece.StartDragJiggle();
+        return true;
     }
 
     private void DragSelectedPiece(Vector3 worldPos)
@@ -156,6 +205,17 @@ public class InputHandler : MonoBehaviour
         }
     }
 
+    private void ReleaseSelectedPieceForced()
+    {
+        if (selectedPiece == null)
+            return;
+
+        selectedPiece.StopDragJiggle(true);
+        selectedPiece.transform.position = selectedStartPosition;
+        selectedPiece = null;
+        dragVelocity = Vector3.zero;
+    }
+
     public void SpawnNextPiece()
     {
         if (gameManager == null || gameManager.IsGameEnded)
@@ -171,10 +231,7 @@ public class InputHandler : MonoBehaviour
         }
 
         Vector3 spawnPos = GetSpawnPreviewWorldPosition();
-        JellyPiece piece = ObjectPool.Instance.Spawn<JellyPiece>(
-            jellyPoolTag,
-            null
-        );
+        JellyPiece piece = ObjectPool.Instance.Spawn<JellyPiece>(jellyPoolTag, null);
 
         if (piece == null)
         {
@@ -191,9 +248,6 @@ public class InputHandler : MonoBehaviour
 
     private Vector3 GetSpawnPreviewWorldPosition()
     {
-        if (mainCamera == null)
-            return spawnPreviewPosition;
-
         Vector3 viewPos = mainCamera.ViewportToWorldPoint(
             new Vector3(0.5f, 0.2f, Mathf.Abs(mainCamera.transform.position.z))
         );
@@ -228,6 +282,7 @@ public class InputHandler : MonoBehaviour
             currentPiece = null;
         }
 
+        activeFingerId = -1;
         dragVelocity = Vector3.zero;
     }
 }

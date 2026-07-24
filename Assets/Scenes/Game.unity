@@ -153,7 +153,7 @@ MonoBehaviour:
   width: 4
   height: 4
   cellSize: 1
-  origin: {x: 1.0000005, y: 1}
+  origin: {x: -1.5, y: -1.5}
   drawGizmos: 1
 --- !u!4 &72704192
 Transform:
@@ -402,10 +402,9 @@ MonoBehaviour:
   mainCamera: {fileID: 519420031}
   board: {fileID: 72704191}
   gameManager: {fileID: 324094663}
-  spawnPreviewPosition: {x: 0, y: 3.5, z: 0}
   jellyPoolTag: JellyPiece
   dragSmoothTime: 0.045
-  dragMaxSpeed: 30
+  dragMaxSpeed: 50
 --- !u!4 &110036468
 Transform:
   m_ObjectHideFlags: 0
@@ -2437,7 +2436,7 @@ Transform:
   m_GameObject: {fileID: 519420028}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 2.5000005, y: 2.5, z: -10}
+  m_LocalPosition: {x: 0, y: 0, z: -10}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3578652545137208782}
   - component: {fileID: 3627452460226001721}
+  - component: {fileID: 6031063715537301753}
   m_Layer: 0
   m_Name: JellySubCellVisual
   m_TagString: Untagged
@@ -78,7 +79,7 @@ SpriteRenderer:
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 857301775
-  m_SortingLayer: 2
+  m_SortingLayer: 5
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_Sprite: {fileID: 7482667652216324306, guid: 311925a002f4447b3a28927169b83ea6, type: 3}
@@ -91,3 +92,88 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+--- !u!114 &6031063715537301753
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5246877376000173180}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: faddefd4d58f89e49a890dbe82c40485, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::JellyAnimation
+  visualRoot: {fileID: 3578652545137208782}
+  playIdle: 0
+  idleSpeed: 2.1
+  idleAmountX: 0.025
+  idleAmountY: 0.03
+  idleSecondaryWave: 0.012
+  dragJiggleSpeed: 15
+  dragJiggleAmountX: 0.05
+  dragJiggleAmountY: 0.04
+  dragStretchAmount: 0.16
+  dragTiltAmount: 10
+  dragReturnTime: 0.16
+  landSquashX: 1.18
+  landSquashY: 0.82
+  landBounceX: 0.92
+  landBounceY: 1.08
+  landRecoverTime: 0.2
+  preCollectPunchScale: 1.16
+  preCollectOvershootScale: 0.94
+  preCollectTime: 0.12
+  collectMoveTime: 0.2
+  collectShrinkTime: 0.12
+  collectStretchAlongPath: 0.14
+  springOscillationCount: 2.5
+  springDamping: 6.5
+  easeOut:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  easeInOut:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
