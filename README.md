@@ -1,179 +1,180 @@
-# Jelly Field
+# Jelly Field Clone Project
 
-Jelly Field là game puzzle dạng kéo-thả trên lưới, nơi mỗi ô board chứa tối đa một `JellyPiece`, và mỗi `JellyPiece` gồm từ 1 đến 4 `JellySubCell`. Khi các `subcell` cùng màu của hai jelly ở hai ô kề nhau chạm cạnh thật, chúng sẽ được thu thập; sau khi bị xóa, jelly còn sống sẽ co/phình lại theo layout mới và tiếp tục được kiểm tra chain cho đến khi trạng thái board ổn định [1][2].
+Đây là một prototype game puzzle nhỏ được làm bằng Unity. Người chơi kéo và thả các khối jelly lên board, tạo match giữa các sub-cell cùng màu, hoàn thành mục tiêu của level và vượt qua màn chơi.
 
-## Gameplay cốt lõi
+## Tổng quan project
 
-- Board là lưới `width x height`; mỗi ô có thể rỗng hoặc chứa đúng một `JellyPiece`.
-- Người chơi kéo jelly preview vào một ô trống trên board.
-- Mỗi jelly có 1 đến 4 subcell, mỗi subcell có màu và `id` riêng.
-- Merge không diễn ra theo cả khối jelly, mà diễn ra ở **cấp subcell**.
-- Hai subcell được thu thập khi thỏa cả hai điều kiện: cùng màu, và hai hình chữ nhật runtime (`localRect`) của chúng chạm mép đúng hướng với overlap đủ lớn.
-- Sau khi một subcell bị xóa, jelly còn lại được render lại ngay. Layout mới này có thể tạo ra lần chạm mới với hàng xóm, nên một lượt đặt có thể sinh ra nhiều đợt collect liên tiếp [1].
+Game được xây dựng theo dạng board grid 2D.
 
-## Cấu trúc hệ thống
+- Người chơi kéo và thả một jelly piece lên một ô trống trên board.
+- Mỗi jelly piece gồm nhiều sub-cell với màu sắc khác nhau.
+- Khi các sub-cell cùng màu chạm nhau giữa hai piece liền kề, chúng sẽ bị xóa.
+- Màu đã xóa sẽ được cộng vào tiến độ goal của level.
+- Nếu hoàn thành toàn bộ goal, người chơi thắng.
+- Nếu board đầy và không còn ô trống, người chơi thua.
 
-| Thành phần | Vai trò |
-|---|---|
-| `BoardManager` | Quản lý lưới, chuyển đổi grid/world, đặt và gỡ jelly khỏi ô. |
-| `InputHandler` | Quản lý chạm, kéo-thả jelly preview, thả vào board. |
-| `GameManager` | Điều phối lượt chơi, sinh jelly mới, resolve chain, kiểm tra thắng/thua. |
-| `MergeSystem` | Kiểm tra tiếp xúc subcell giữa các jelly kề nhau. |
-| `GoalSystem` | Theo dõi số subcell đã thu thập theo màu và điều kiện thắng. |
-| `JellyPiece` | Dữ liệu và hành vi của một jelly đang nằm trên board hoặc ở preview. |
-| `JellyPieceView` | Dựng hình các subcell con theo layout runtime. |
-| `JellySubCell` | Đơn vị nhỏ nhất có thể merge/collect; có màu, `id`, `slot`, `localRect`. |
+## Flow gameplay chính
 
-## Rule dữ liệu
+1. Khởi tạo dữ liệu level.
+2. Cấu hình kích thước board theo level.
+3. Spawn jelly piece tiếp theo.
+4. Người chơi kéo và thả piece vào một ô trống.
+5. Hệ thống kiểm tra các sub-cell cùng màu đang chạm nhau giữa các piece liền kề.
+6. Các sub-cell match sẽ bị xóa.
+7. Các jelly piece rỗng hoàn toàn sẽ được collect và xóa khỏi board.
+8. Tiến độ goal được cập nhật.
+9. Hệ thống tiếp tục kiểm tra chain reaction cho tới khi không còn match.
+10. Nếu game chưa kết thúc, piece tiếp theo sẽ được spawn.
 
-### 1. Board và Cell
+## Các system chính
 
-`BoardManager` tạo mảng `CellData[,] grid`, trong đó mỗi `CellData` lưu `Coord` và `OccupiedPiece`. Đây là trạng thái nguồn sự thật của board: một jelly chỉ được xem là đang nằm trên board khi một `CellData` trỏ tới nó [1].
+### GameManager
 
-### 2. JellyPiece
+Quản lý flow chính của game.
 
-`JellyPiece` là container của danh sách `subCells`. Piece không tự biết merge; nó chỉ biết:
+Chức năng:
 
-- đang ở ô nào (`CurrentCoord`),
-- có đang thuộc board hay không (`HasCell`),
-- danh sách subcell hiện tại,
-- cách xóa một subcell theo `id`, rồi render lại hình dạng mới.
+- Khởi tạo level.
+- Spawn và setup jelly piece.
+- Resolve một lượt sau khi người chơi đặt piece.
+- Kiểm tra điều kiện thắng và thua.
+- Trigger hiệu ứng collect và reward(coin?) khi thắng.
 
-### 3. JellySubCell
+### BoardManager
 
-Mỗi `JellySubCell` có:
+Quản lý board dạng lưới.
 
-- `id`: định danh duy nhất để xóa đúng subcell.
-- `color`: màu logic dùng cho goal và merge.
-- `slot`: nhãn layout runtime, chủ yếu hữu ích cho debug/animation.
-- `localRect`: hình chữ nhật runtime trong hệ tọa độ local của jelly; đây là dữ liệu quan trọng nhất cho merge hình học.
+Chức năng:
 
-### 4. Layout nội bộ của jelly
+- Tạo và xóa board.
+- Chuyển đổi giữa grid coordinate và world coordinate.
+- Đặt và xóa piece trên board.
+- Kiểm tra ô trống.
+- Lấy các piece lân cận hoặc các ô đang có piece.
 
-`JellyPieceView.BuildLayout(count)` quyết định cách 1, 2, 3 hoặc 4 subcell được sắp trong một ô chuẩn `[-0.5 .. 0.5]`. Khi render, từng subcell được gán `slot` và `localRect`, rồi sprite con được đặt đúng vị trí và scale tương ứng [1].
+### MergeSystem
 
-## Flow của một lượt chơi
+Quản lý logic tìm match.
 
-### 1. Khởi tạo level
+Chức năng:
 
-`GameManager.Start()` gọi:
+- Kiểm tra piece vừa đặt với 4 piece xung quanh.
+- So sánh các sub-cell giữa 2 piece liền kề.
+- Xác định các cặp sub-cell chạm nhau hợp lệ dựa trên màu và rect.
+- Trả về danh sách sub-cell match không bị trùng.
 
-1. `board.ConfigureBoard(levelData.width, levelData.height)` để tạo board đúng kích thước level.
-2. `goalSystem.Initialize(levelData)` để nạp mục tiêu theo màu.
-3. `inputHandler.SpawnNextPiece()` để sinh jelly preview đầu tiên.
+### GoalSystem
 
-### 2. Sinh jelly preview
+Quản lý mục tiêu của level.
 
-`InputHandler.SpawnNextPiece()` instantiate `jellyPrefab`, rồi `GameManager.SetupSpawnedPiece()` tạo danh sách subcell ngẫu nhiên.
+Chức năng:
 
-Rule random hiện tại:
+- Khởi tạo goal của level.
+- Ghi nhận số lượng màu đã collect.
+- Cập nhật tiến độ goal.
+- Kiểm tra điều kiện thắng.
 
-- số subcell từ 1 đến 4,
-- màu chọn từ `Red`, `Yellow`, `Blue`, `Green`,
-- không cho phép hai subcell kề nhau **trong cùng một jelly** có cùng màu.
+### JellyPiece
 
-Điều này được xử lý bởi `GetRandomColorExceptAdjacent()` kết hợp với `AreSubCellsAdjacentInSameJelly(...)`.
+Đại diện cho một khối jelly trên board.
 
-### 3. Drag và đặt jelly vào board
+Chức năng:
 
-`InputHandler` chỉ cho phép người chơi kéo đúng `currentPiece` preview. Khi thả tay:
+- Lưu dữ liệu sub-cell.
+- Ghi nhớ vị trí hiện tại trên board.
+- Xóa sub-cell khi bị match.
+- Cập nhật lại hình ảnh hiển thị.
+- Reset trạng thái khi spawn hoặc despawn từ pool.
 
-1. `board.WorldToGrid(worldPos)` đổi tọa độ world sang ô lưới.
-2. `board.TryPlacePiece(selectedPiece, coord)` kiểm tra ô có hợp lệ và đang trống hay không.
-3. Nếu đặt thành công, piece được gắn vào `CellData`, cập nhật `CurrentCoord`, đưa transform về tâm ô, và phát animation landing.
-4. `gameManager.ResolveTurn(placedPiece, coord)` bắt đầu lượt resolve [1].
+### JellyAnimation
 
-## Flow check subcell và merge
+Quản lý animation cho jelly piece.
 
-### 1. Chỉ xét jelly ở 4 ô kề
+Chức năng:
 
-`MergeSystem.TryGetTouchMatchesForPlacedPiece(placedCoord, out matches)` lấy jelly ở ô đang xét, rồi chỉ duyệt 4 hướng:
+- Idle animation.
+- Drag jiggle animation khi kéo.
+- Landing animation khi thả xuống board.
+- Pre-collect pulse trước khi bị xóa.
+- Collect animation khi bay về điểm collect.
+- Đưa jelly quay lại trạng thái gốc một cách mượt mà.
 
-- Up
-- Right
-- Down
-- Left
+### JellyPopEffect
 
-Không xét chéo ô, không xét subcell trong cùng một jelly.
+Quản lý particle effect khi jelly bị collect.
 
-### 2. So từng cặp subcell cùng màu
+Chức năng:
 
-Với mỗi jelly hàng xóm, hệ thống duyệt toàn bộ cặp:
+- Phát particle với màu tương ứng.
+- Tự động despawn sau khi effect kết thúc.
+- Reset particle state để tái sử dụng bằng object pool.
 
-- `sourcePiece.SubCells[i]`
-- `targetPiece.SubCells[j]`
+## Rule của merge
 
-Nếu một subcell không có layout runtime hợp lệ (`HasValidRuntimeLayout == false`) thì bỏ qua. Nếu màu khác nhau thì bỏ qua.
+Logic merge của game hoạt động ở mức sub-cell, không phải toàn bộ piece.
 
-### 3. Kiểm tra hình học thật bằng Rect
+Hai sub-cell được tính là match hợp lệ khi:
 
-Thay vì đoán bằng enum slot, merge hiện tại dùng `localRect` thật:
+- Chúng thuộc về 2 piece khác nhau đang nằm cạnh nhau.
+- Chúng có cùng màu.
+- Chúng có runtime layout hợp lệ.
+- Rect của chúng chạm nhau đúng theo hướng đang kiểm tra.
+- Phần overlap trên trục còn lại lớn hơn tolerance được cấu hình.
 
-- Nếu hàng xóm ở trên: kiểm tra `a.yMax` gần `b.yMin` và overlap theo trục X đủ lớn.
-- Nếu hàng xóm bên phải: kiểm tra `a.xMax` gần `b.xMin` và overlap theo trục Y đủ lớn.
-- Tương tự cho dưới và trái.
+Khi có match:
 
-Hai ngưỡng điều chỉnh:
+- Các sub-cell hợp lệ sẽ bị xóa.
+- Goal sẽ được cộng theo màu của sub-cell bị xóa.
+- Piece nào rỗng hoàn toàn sẽ được collect và xóa khỏi board.
+- Các piece còn lại sẽ tiếp tục được kiểm tra để tạo chain reaction.
 
-- `edgeTolerance`: cho phép sai số nhỏ khi hai mép gần như trùng nhau.
-- `overlapTolerance`: yêu cầu overlap tối thiểu để tránh merge giả ở góc.
+## Giải thích animation
 
-### 4. Thu thập unique subcell
+### Idle
 
-Nếu hai subcell hợp lệ, cả hai đều được thêm vào `matches`. `MergeSystem` dùng key `pieceInstanceId + subCellId` để tránh một subcell bị thêm trùng nhiều lần trong cùng lượt check.
+Animation scale và rotation nhẹ để jelly có cảm giác mềm và sống động.
 
-## Flow resolve chain
+### Drag Jiggle
 
-`GameManager.ResolveTurnRoutine()` là trung tâm xử lý chain.
+Khi người chơi kéo piece, jelly sẽ bị kéo giãn và nghiêng theo hướng di chuyển.
 
-### Pha 1: Khởi tạo queue
+### Landing
 
-- `pending` chứa các ô cần kiểm tra.
-- ban đầu chỉ enqueue `placedCoord`.
-- `resolvedStates` dùng để tránh resolve lặp vô hạn cùng một trạng thái match.
-- `maxIterations` là chốt an toàn chống loop vô hạn.
+Khi piece được đặt xuống board, nó sẽ có hiệu ứng squash và bounce.
 
-### Pha 2: Lấy một ô ra để resolve
+### Pre-Collect Pulse
 
-Với mỗi `coord` trong queue:
+Trước khi bị xóa, các piece liên quan sẽ pulse nhẹ để báo hiệu chuẩn bị collect.
 
-1. Gọi `mergeSystem.TryGetTouchMatchesForPlacedPiece(coord, out matchedSubs)`.
-2. Nếu không có match thì bỏ qua ô này.
-3. Nếu có match, tạo `stateKey` từ tập subcell match hiện tại; nếu state này đã xử lý trước đó thì bỏ qua.
+### Collect
 
-### Pha 3: Pulse trước khi collect
+Khi piece rỗng hoàn toàn, nó sẽ bay về tâm collect, hơi kéo giãn theo hướng bay rồi thu nhỏ lại.
 
-Tất cả `JellyPiece` có subcell xuất hiện trong `matchedSubs` sẽ được gom vào `touchedPieces`, rồi gọi `PlayPreCollectPulse()` để báo hiệu chuẩn bị thu thập.
+### Pop Effect
 
-### Pha 4: Xóa subcell
+Sau khi collect xong, particle effect với màu tương ứng sẽ được phát và tự trả về pool.
 
-Với từng `MatchedSubCellData`:
+## Object Pooling
 
-1. `piece.RemoveSubCellById(subCellId)` xóa đúng subcell khỏi list.
-2. `JellyPiece.RefreshVisual()` chạy ngay trong `RemoveSubCellById()` để dựng lại shape còn sống.
-3. `goalSystem.CollectRemovedColor(color, 1)` tăng tiến độ goal theo màu.
+Project sử dụng object pooling cho các object gameplay và effect có thể tái sử dụng.
 
-### Pha 5: Tách piece rỗng và piece còn sống
+Lợi ích:
 
-Sau khi xóa xong:
+- Giảm chi phí Instantiate và Destroy khi runtime.
+- Hạn chế tạo garbage không cần thiết.
+- Giúp việc tái sử dụng piece và effect ổn định hơn.
 
-- piece nào không còn subcell sẽ vào `emptiedPieces`,
-- piece nào còn subcell sẽ vào `survivedPieces`.
+Các object pooled sẽ reset trạng thái trong `OnSpawned()` và `OnDespawned()` để tránh giữ lại dữ liệu cũ từ lần sử dụng trước.
 
-`emptiedPieces` sẽ bị gỡ khỏi board và bay về `collectCenter` bằng `PlayCollectAndRemoveRoutine()`.
+## Cách chạy project
 
-### Pha 6: Cascade check tiếp
+1. Mở project bằng Unity.
+2. Mở scene gameplay chính.
+3. Nhấn Play trong Unity Editor.
+4. Kéo và thả jelly piece lên board để chơi.
 
-Mỗi `survivedPiece` được enqueue lại cùng với 4 ô hàng xóm của nó. Đây là phần làm cho game hỗ trợ rule “subcell bị xóa xong thì jelly co/phình và có thể ăn tiếp ngay trong cùng lượt”. Nếu shape mới tạo ra tiếp xúc mới, lượt resolve hiện tại sẽ bắt được ngay, không phải chờ lượt đặt jelly sau [1].
+## Ghi chú
 
-### Pha 7: Kết thúc lượt
-
-Khi queue rỗng hoặc chạm giới hạn an toàn:
-
-- nếu goal đủ thì win,
-- nếu board hết ô trống thì lose,
-- ngược lại spawn jelly preview kế tiếp.
-
-## Goal và điều kiện thắng
-
-`GoalSystem` chỉ đếm các màu có trong `LevelGoalData.goals`. Khi một subcell bị remove, `CollectRemovedColor(color, 1)` cộng tiến độ nếu màu đó là mục tiêu. `CheckWinCondition()` duyệt toàn bộ goals và chỉ win khi mọi màu đều đạt số lượng yêu cầu [query].
+- Project được tách thành các system riêng cho board logic, merge detection, goal, animation và effect.
+- Coroutines được dùng để xử lý flow resolve theo thời gian và animation.
+- Object pooling được dùng để tối ưu hiệu năng runtime cho các object tái sử dụng.
