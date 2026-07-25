@@ -4,9 +4,12 @@ using UnityEngine;
 
 public class JellyPiece : MonoBehaviour, IPoolable
 {
+    [Header("References")]
     [SerializeField] private BoxCollider2D boxCollider;
     [SerializeField] private JellyAnimation jellyAnimation;
     [SerializeField] private JellyPieceView pieceView;
+
+    [Header("Data")]
     [SerializeField] private List<JellySubCell> subCells = new List<JellySubCell>();
 
     public Vector2Int CurrentCoord { get; private set; }
@@ -15,7 +18,11 @@ public class JellyPiece : MonoBehaviour, IPoolable
 
     public void Setup(List<JellySubCell> newSubCells)
     {
-        subCells = newSubCells ?? new List<JellySubCell>();
+        if (newSubCells == null)
+            subCells = new List<JellySubCell>();
+        else
+            subCells = newSubCells;
+
         RefreshVisual();
     }
 
@@ -38,12 +45,17 @@ public class JellyPiece : MonoBehaviour, IPoolable
 
         for (int i = 0; i < subCells.Count; i++)
         {
-            if (subCells[i] != null && subCells[i].id == subCellId)
-            {
-                subCells.RemoveAt(i);
-                RefreshVisual();
-                return true;
-            }
+            JellySubCell subCell = subCells[i];
+
+            if (subCell == null)
+                continue;
+
+            if (subCell.id != subCellId)
+                continue;
+
+            subCells.RemoveAt(i);
+            RefreshVisual();
+            return true;
         }
 
         return false;
@@ -59,43 +71,13 @@ public class JellyPiece : MonoBehaviour, IPoolable
         if (subCells == null || subCells.Count == 0)
             return JellyColor.Red;
 
-        Dictionary<JellyColor, int> counts = new Dictionary<JellyColor, int>();
-
-        for (int i = 0; i < subCells.Count; i++)
-        {
-            if (subCells[i] == null)
-                continue;
-
-            JellyColor color = subCells[i].color;
-
-            if (!counts.ContainsKey(color))
-                counts[color] = 0;
-
-            counts[color]++;
-        }
-
-        JellyColor result = subCells[0].color;
-        int best = -1;
-
-        foreach (var pair in counts)
-        {
-            if (pair.Value > best)
-            {
-                best = pair.Value;
-                result = pair.Key;
-            }
-        }
-
-        return result;
+        Dictionary<JellyColor, int> colorCounts = CountColors();
+        return FindMostCommonColor(colorCounts);
     }
 
     public void RefreshVisual()
     {
-        if (pieceView == null)
-            pieceView = GetComponentInChildren<JellyPieceView>();
-
-        if (jellyAnimation == null)
-            jellyAnimation = GetComponent<JellyAnimation>();
+        CacheReferences();
 
         if (pieceView != null)
             pieceView.Render(subCells);
@@ -147,49 +129,81 @@ public class JellyPiece : MonoBehaviour, IPoolable
 
     public void OnSpawned()
     {
-        ClearCoord();
-
-        if (subCells == null)
-            subCells = new List<JellySubCell>();
-        else
-            subCells.Clear();
-
-        if (pieceView == null)
-            pieceView = GetComponentInChildren<JellyPieceView>();
-
-        if (jellyAnimation == null)
-            jellyAnimation = GetComponent<JellyAnimation>();
-
-        if (pieceView != null)
-            pieceView.ClearVisualsForPool();
-
-        if (jellyAnimation != null)
-        {
-            jellyAnimation.StopAllCoroutines();
-            jellyAnimation.SetBaseScale(Vector3.one);
-        }
-
-        if (boxCollider != null)
-            boxCollider.size = Vector2.one;
-
-        transform.localScale = Vector3.one;
+        ResetStateForPool();
     }
 
     public void OnDespawned()
     {
-        ClearCoord();
+        ResetStateForPool();
+    }
 
-        if (subCells == null)
-            subCells = new List<JellySubCell>();
-        else
-            subCells.Clear();
-
+    private void CacheReferences()
+    {
         if (pieceView == null)
             pieceView = GetComponentInChildren<JellyPieceView>();
 
         if (jellyAnimation == null)
             jellyAnimation = GetComponent<JellyAnimation>();
+    }
 
+    private Dictionary<JellyColor, int> CountColors()
+    {
+        Dictionary<JellyColor, int> colorCounts = new Dictionary<JellyColor, int>();
+
+        for (int i = 0; i < subCells.Count; i++)
+        {
+            JellySubCell subCell = subCells[i];
+
+            if (subCell == null)
+                continue;
+
+            JellyColor color = subCell.color;
+
+            if (!colorCounts.ContainsKey(color))
+                colorCounts[color] = 0;
+
+            colorCounts[color]++;
+        }
+
+        return colorCounts;
+    }
+
+    private JellyColor FindMostCommonColor(Dictionary<JellyColor, int> colorCounts)
+    {
+        JellyColor result = JellyColor.Red;
+        int highestCount = -1;
+
+        foreach (KeyValuePair<JellyColor, int> pair in colorCounts)
+        {
+            if (pair.Value <= highestCount)
+                continue;
+
+            highestCount = pair.Value;
+            result = pair.Key;
+        }
+
+        return result;
+    }
+
+    private void ResetStateForPool()
+    {
+        ClearCoord();
+        ClearSubCells();
+        CacheReferences();
+        ResetVisualState();
+        ResetTransformState();
+    }
+
+    private void ClearSubCells()
+    {
+        if (subCells == null)
+            subCells = new List<JellySubCell>();
+        else
+            subCells.Clear();
+    }
+
+    private void ResetVisualState()
+    {
         if (pieceView != null)
             pieceView.ClearVisualsForPool();
 
@@ -201,7 +215,10 @@ public class JellyPiece : MonoBehaviour, IPoolable
 
         if (boxCollider != null)
             boxCollider.size = Vector2.one;
+    }
 
+    private void ResetTransformState()
+    {
         transform.localScale = Vector3.one;
     }
 }

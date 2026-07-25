@@ -1,9 +1,10 @@
+﻿using System;
 using System.Collections;
 using UnityEngine;
 
 public class JellyAnimation : MonoBehaviour
 {
-    [Header("Refs")]
+    [Header("References")]
     [SerializeField] private Transform visualRoot;
 
     [Header("Idle")]
@@ -50,7 +51,7 @@ public class JellyAnimation : MonoBehaviour
     private Quaternion baseRotation = Quaternion.identity;
 
     private Coroutine idleRoutine;
-    private Coroutine animRoutine;
+    private Coroutine animationRoutine;
     private Coroutine dragRoutine;
     private Coroutine returnRoutine;
 
@@ -81,6 +82,7 @@ public class JellyAnimation : MonoBehaviour
         ResetImmediateVisualState();
     }
 
+    // Set scale gốc để các animation sau luôn quay về đúng trạng thái chuẩn
     public void SetBaseScale(Vector3 newScale)
     {
         baseScale = newScale;
@@ -89,6 +91,7 @@ public class JellyAnimation : MonoBehaviour
             visualRoot.localScale = baseScale;
     }
 
+    // Input từ drag sẽ update velocity liên tục để animation biết đang kéo theo hướng nào
     public void SetDragVelocity(Vector3 worldDelta)
     {
         dragVelocity = worldDelta;
@@ -101,12 +104,7 @@ public class JellyAnimation : MonoBehaviour
 
         StopIdle();
         StopReturnRoutine();
-
-        if (animRoutine != null)
-        {
-            StopCoroutine(animRoutine);
-            animRoutine = null;
-        }
+        StopCurrentAnimationRoutine();
 
         if (dragRoutine != null)
             StopCoroutine(dragRoutine);
@@ -126,20 +124,21 @@ public class JellyAnimation : MonoBehaviour
             dragRoutine = null;
         }
 
+        StopReturnRoutine();
+
         if (snapToBase && gameObject.activeInHierarchy)
-        {
-            StopReturnRoutine();
             returnRoutine = StartCoroutine(ReturnToBaseRoutine());
-        }
-        else
-        {
-            StopReturnRoutine();
-        }
     }
 
     public void StartIdle()
     {
-        if (!playIdle || isBusy || isDragging || !gameObject.activeInHierarchy)
+        if (!playIdle)
+            return;
+
+        if (isBusy || isDragging)
+            return;
+
+        if (!gameObject.activeInHierarchy)
             return;
 
         if (idleRoutine != null)
@@ -163,7 +162,7 @@ public class JellyAnimation : MonoBehaviour
             return;
 
         StopDragJiggle(false);
-        RestartAnim(LandingRoutine());
+        RestartMainAnimation(LandingRoutine());
     }
 
     public void PlayPreCollectPulse()
@@ -172,19 +171,20 @@ public class JellyAnimation : MonoBehaviour
             return;
 
         StopDragJiggle(false);
-        RestartAnim(PreCollectPulseRoutine());
+        RestartMainAnimation(PreCollectPulseRoutine());
     }
 
-    public void PlayCollectToPoint(Vector3 target, System.Action onComplete = null)
+    public void PlayCollectToPoint(Vector3 target, Action onComplete = null)
     {
         if (!gameObject.activeInHierarchy)
             return;
 
         StopDragJiggle(false);
-        RestartAnim(CollectRoutine(target, onComplete));
+        RestartMainAnimation(CollectRoutine(target, onComplete));
     }
 
-    private void RestartAnim(IEnumerator routine)
+    // Chỉ cho phép 1 animation chính chạy tại một thời điểm
+    private void RestartMainAnimation(IEnumerator routine)
     {
         StopIdle();
         StopReturnRoutine();
@@ -196,11 +196,18 @@ public class JellyAnimation : MonoBehaviour
         }
 
         isDragging = false;
+        StopCurrentAnimationRoutine();
 
-        if (animRoutine != null)
-            StopCoroutine(animRoutine);
+        animationRoutine = StartCoroutine(routine);
+    }
 
-        animRoutine = StartCoroutine(routine);
+    private void StopCurrentAnimationRoutine()
+    {
+        if (animationRoutine != null)
+        {
+            StopCoroutine(animationRoutine);
+            animationRoutine = null;
+        }
     }
 
     private void StopReturnRoutine()
@@ -216,6 +223,7 @@ public class JellyAnimation : MonoBehaviour
     {
         StopIdle();
         StopReturnRoutine();
+        StopCurrentAnimationRoutine();
 
         if (dragRoutine != null)
         {
@@ -223,17 +231,12 @@ public class JellyAnimation : MonoBehaviour
             dragRoutine = null;
         }
 
-        if (animRoutine != null)
-        {
-            StopCoroutine(animRoutine);
-            animRoutine = null;
-        }
-
         isBusy = false;
         isDragging = false;
         dragVelocity = Vector3.zero;
     }
 
+    // Reset ngay lập tức scale và rotation về trạng thái gốc
     private void ResetImmediateVisualState()
     {
         if (visualRoot == null)
@@ -247,14 +250,16 @@ public class JellyAnimation : MonoBehaviour
     {
         while (true)
         {
-            float t = Time.time * idleSpeed;
+            float timeValue = Time.time * idleSpeed;
 
-            float sx = 1f + Mathf.Sin(t) * idleAmountX + Mathf.Sin(t * 0.47f) * idleSecondaryWave;
-            float sy = 1f - Mathf.Sin(t * 0.9f) * idleAmountY;
-            float rot = Mathf.Sin(t * 0.7f) * 1.5f;
+            float scaleX = 1f + Mathf.Sin(timeValue) * idleAmountX
+                              + Mathf.Sin(timeValue * 0.47f) * idleSecondaryWave;
 
-            visualRoot.localScale = new Vector3(baseScale.x * sx, baseScale.y * sy, baseScale.z);
-            visualRoot.localRotation = Quaternion.Euler(0f, 0f, rot);
+            float scaleY = 1f - Mathf.Sin(timeValue * 0.9f) * idleAmountY;
+            float rotationZ = Mathf.Sin(timeValue * 0.7f) * 1.5f;
+
+            ApplyVisualScale(scaleX, scaleY);
+            visualRoot.localRotation = Quaternion.Euler(0f, 0f, rotationZ);
 
             yield return null;
         }
@@ -264,27 +269,26 @@ public class JellyAnimation : MonoBehaviour
     {
         while (isDragging)
         {
-            float t = Time.time * dragJiggleSpeed;
+            float timeValue = Time.time * dragJiggleSpeed;
 
-            Vector2 v = new Vector2(dragVelocity.x, dragVelocity.y);
-            float speed = Mathf.Clamp01(v.magnitude * 10f);
+            Vector2 velocity2D = new Vector2(dragVelocity.x, dragVelocity.y);
+            float speedPercent = Mathf.Clamp01(velocity2D.magnitude * 10f);
+            Vector2 direction = GetNormalizedDirectionOrZero(velocity2D);
 
-            Vector2 dir = v.sqrMagnitude > 0.0001f ? v.normalized : Vector2.zero;
+            float waveX = Mathf.Sin(timeValue) * dragJiggleAmountX * (0.4f + speedPercent);
+            float waveY = Mathf.Cos(timeValue * 0.92f) * dragJiggleAmountY * (0.4f + speedPercent);
 
-            float waveX = Mathf.Sin(t) * dragJiggleAmountX * (0.4f + speed);
-            float waveY = Mathf.Cos(t * 0.92f) * dragJiggleAmountY * (0.4f + speed);
+            float stretchBase = dragStretchAmount * speedPercent;
+            float stretchX = direction.x * stretchBase - direction.y * stretchBase * 0.35f;
+            float stretchY = direction.y * stretchBase - direction.x * stretchBase * 0.35f;
 
-            float stretchMain = dragStretchAmount * speed;
-            float stretchX = dir.x * stretchMain - dir.y * stretchMain * 0.35f;
-            float stretchY = dir.y * stretchMain - dir.x * stretchMain * 0.35f;
+            float scaleX = 1f + waveX + stretchX;
+            float scaleY = 1f - waveY + stretchY;
+            float rotationZ = -direction.x * dragTiltAmount * speedPercent
+                              + Mathf.Sin(timeValue * 0.8f) * 1.2f * speedPercent;
 
-            float sx = 1f + waveX + stretchX;
-            float sy = 1f - waveY + stretchY;
-
-            float rot = -dir.x * dragTiltAmount * speed + Mathf.Sin(t * 0.8f) * 1.2f * speed;
-
-            visualRoot.localScale = new Vector3(baseScale.x * sx, baseScale.y * sy, baseScale.z);
-            visualRoot.localRotation = Quaternion.Euler(0f, 0f, rot);
+            ApplyVisualScale(scaleX, scaleY);
+            visualRoot.localRotation = Quaternion.Euler(0f, 0f, rotationZ);
 
             yield return null;
         }
@@ -292,19 +296,20 @@ public class JellyAnimation : MonoBehaviour
 
     private IEnumerator ReturnToBaseRoutine()
     {
-        Vector3 scaleStart = visualRoot.localScale;
-        Quaternion rotStart = visualRoot.localRotation;
+        Vector3 startScale = visualRoot.localScale;
+        Quaternion startRotation = visualRoot.localRotation;
 
-        float t = 0f;
-        while (t < dragReturnTime)
+        float elapsedTime = 0f;
+
+        while (elapsedTime < dragReturnTime)
         {
-            t += Time.deltaTime;
-            float p = Mathf.Clamp01(t / dragReturnTime);
+            elapsedTime += Time.deltaTime;
 
-            float spring = EvaluateDampedSpring01(p, springOscillationCount, springDamping);
+            float progress = Mathf.Clamp01(elapsedTime / dragReturnTime);
+            float springValue = EvaluateDampedSpring01(progress, springOscillationCount, springDamping);
 
-            visualRoot.localScale = Vector3.LerpUnclamped(scaleStart, baseScale, spring);
-            visualRoot.localRotation = Quaternion.SlerpUnclamped(rotStart, baseRotation, spring);
+            visualRoot.localScale = Vector3.LerpUnclamped(startScale, baseScale, springValue);
+            visualRoot.localRotation = Quaternion.SlerpUnclamped(startRotation, baseRotation, springValue);
 
             yield return null;
         }
@@ -317,115 +322,144 @@ public class JellyAnimation : MonoBehaviour
             StartIdle();
     }
 
+    // Animation lúc piece vừa được thả xuống board
     private IEnumerator LandingRoutine()
     {
         isBusy = true;
 
-        Vector3 squash = new Vector3(baseScale.x * landSquashX, baseScale.y * landSquashY, baseScale.z);
-        Vector3 rebound = new Vector3(baseScale.x * landBounceX, baseScale.y * landBounceY, baseScale.z);
+        Vector3 squashScale = new Vector3(baseScale.x * landSquashX, baseScale.y * landSquashY, baseScale.z);
+        Vector3 reboundScale = new Vector3(baseScale.x * landBounceX, baseScale.y * landBounceY, baseScale.z);
 
-        yield return AnimateScale(baseScale, squash, landRecoverTime * 0.24f, easeInOut);
-        yield return AnimateScale(squash, rebound, landRecoverTime * 0.28f, easeOut);
-        yield return AnimateScaleSpring(rebound, baseScale, landRecoverTime * 0.48f);
+        yield return AnimateScale(baseScale, squashScale, landRecoverTime * 0.24f, easeInOut);
+        yield return AnimateScale(squashScale, reboundScale, landRecoverTime * 0.28f, easeOut);
+        yield return AnimateScaleSpring(reboundScale, baseScale, landRecoverTime * 0.48f);
 
-        visualRoot.localScale = baseScale;
-        visualRoot.localRotation = baseRotation;
-
-        isBusy = false;
-        animRoutine = null;
-
-        if (playIdle && !isDragging)
-            StartIdle();
+        FinishMainAnimation();
     }
 
+    // Animation nhịp phồng nhẹ trước khi collect
     private IEnumerator PreCollectPulseRoutine()
     {
         isBusy = true;
 
-        Vector3 big = baseScale * preCollectPunchScale;
-        Vector3 overshoot = baseScale * preCollectOvershootScale;
+        Vector3 bigScale = baseScale * preCollectPunchScale;
+        Vector3 overshootScale = baseScale * preCollectOvershootScale;
 
-        yield return AnimateScale(baseScale, big, preCollectTime * 0.38f, easeOut);
-        yield return AnimateScale(big, overshoot, preCollectTime * 0.27f, easeInOut);
-        yield return AnimateScaleSpring(overshoot, baseScale, preCollectTime * 0.55f);
+        yield return AnimateScale(baseScale, bigScale, preCollectTime * 0.38f, easeOut);
+        yield return AnimateScale(bigScale, overshootScale, preCollectTime * 0.27f, easeInOut);
+        yield return AnimateScaleSpring(overshootScale, baseScale, preCollectTime * 0.55f);
 
-        visualRoot.localScale = baseScale;
-        visualRoot.localRotation = baseRotation;
-
-        isBusy = false;
-        animRoutine = null;
-
-        if (playIdle && !isDragging)
-            StartIdle();
+        FinishMainAnimation();
     }
 
-    private IEnumerator CollectRoutine(Vector3 target, System.Action onComplete)
+    // Animation piece bay về điểm collect rồi thu nhỏ lại
+    private IEnumerator CollectRoutine(Vector3 target, Action onComplete)
     {
         isBusy = true;
 
-        Vector3 startPos = transform.position;
+        Vector3 startPosition = transform.position;
         Vector3 startScale = visualRoot.localScale;
         Vector3 punchScale = baseScale * preCollectPunchScale;
 
         yield return AnimateScale(startScale, punchScale, preCollectTime, easeOut);
+        yield return MoveToTargetWithStretch(startPosition, target);
+        yield return ShrinkToZero();
 
-        float t = 0f;
-        Vector3 prevPos = startPos;
+        isBusy = false;
+        animationRoutine = null;
+        onComplete?.Invoke();
+    }
 
-        while (t < collectMoveTime)
+    private IEnumerator MoveToTargetWithStretch(Vector3 startPosition, Vector3 target)
+    {
+        float elapsedTime = 0f;
+        Vector3 previousPosition = startPosition;
+
+        while (elapsedTime < collectMoveTime)
         {
-            t += Time.deltaTime;
-            float p = Mathf.Clamp01(t / collectMoveTime);
-            float eased = easeOut.Evaluate(p);
+            elapsedTime += Time.deltaTime;
 
-            Vector3 nextPos = Vector3.Lerp(startPos, target, eased);
-            Vector3 delta = nextPos - prevPos;
-            Vector2 dir = new Vector2(delta.x, delta.y);
-            float speed = Mathf.Clamp01(dir.magnitude * 30f);
+            float progress = Mathf.Clamp01(elapsedTime / collectMoveTime);
+            float easedProgress = easeOut.Evaluate(progress);
 
-            transform.position = nextPos;
+            Vector3 nextPosition = Vector3.Lerp(startPosition, target, easedProgress);
+            Vector3 movementDelta = nextPosition - previousPosition;
+            Vector2 moveDirection = new Vector2(movementDelta.x, movementDelta.y);
+            float speedPercent = Mathf.Clamp01(moveDirection.magnitude * 30f);
 
-            if (dir.sqrMagnitude > 0.00001f)
+            transform.position = nextPosition;
+
+            if (moveDirection.sqrMagnitude > 0.00001f)
             {
-                dir.Normalize();
-                float stretchX = 1f + dir.x * collectStretchAlongPath * speed - dir.y * collectStretchAlongPath * 0.25f * speed;
-                float stretchY = 1f + dir.y * collectStretchAlongPath * speed - dir.x * collectStretchAlongPath * 0.25f * speed;
+                moveDirection.Normalize();
 
-                visualRoot.localScale = new Vector3(
-                    baseScale.x * stretchX,
-                    baseScale.y * stretchY,
-                    baseScale.z
-                );
+                float scaleX = 1f + moveDirection.x * collectStretchAlongPath * speedPercent
+                                  - moveDirection.y * collectStretchAlongPath * 0.25f * speedPercent;
 
-                float rot = -dir.x * 8f * speed;
-                visualRoot.localRotation = Quaternion.Euler(0f, 0f, rot);
+                float scaleY = 1f + moveDirection.y * collectStretchAlongPath * speedPercent
+                                  - moveDirection.x * collectStretchAlongPath * 0.25f * speedPercent;
+
+                ApplyVisualScale(scaleX, scaleY);
+
+                float rotationZ = -moveDirection.x * 8f * speedPercent;
+                visualRoot.localRotation = Quaternion.Euler(0f, 0f, rotationZ);
             }
 
-            prevPos = nextPos;
+            previousPosition = nextPosition;
             yield return null;
         }
+    }
 
-        t = 0f;
-        Vector3 shrinkStart = visualRoot.localScale;
-        Quaternion shrinkRotStart = visualRoot.localRotation;
+    private IEnumerator ShrinkToZero()
+    {
+        float elapsedTime = 0f;
+        Vector3 startScale = visualRoot.localScale;
+        Quaternion startRotation = visualRoot.localRotation;
 
-        while (t < collectShrinkTime)
+        while (elapsedTime < collectShrinkTime)
         {
-            t += Time.deltaTime;
-            float p = Mathf.Clamp01(t / collectShrinkTime);
-            float eased = easeInOut.Evaluate(p);
+            elapsedTime += Time.deltaTime;
 
-            visualRoot.localScale = Vector3.LerpUnclamped(shrinkStart, Vector3.zero, eased);
-            visualRoot.localRotation = Quaternion.SlerpUnclamped(shrinkRotStart, baseRotation, eased);
+            float progress = Mathf.Clamp01(elapsedTime / collectShrinkTime);
+            float easedProgress = easeInOut.Evaluate(progress);
+
+            visualRoot.localScale = Vector3.LerpUnclamped(startScale, Vector3.zero, easedProgress);
+            visualRoot.localRotation = Quaternion.SlerpUnclamped(startRotation, baseRotation, easedProgress);
+
             yield return null;
         }
 
         visualRoot.localScale = Vector3.zero;
         visualRoot.localRotation = baseRotation;
+    }
+
+    private void FinishMainAnimation()
+    {
+        visualRoot.localScale = baseScale;
+        visualRoot.localRotation = baseRotation;
 
         isBusy = false;
-        animRoutine = null;
-        onComplete?.Invoke();
+        animationRoutine = null;
+
+        if (playIdle && !isDragging)
+            StartIdle();
+    }
+
+    private void ApplyVisualScale(float normalizedScaleX, float normalizedScaleY)
+    {
+        visualRoot.localScale = new Vector3(
+            baseScale.x * normalizedScaleX,
+            baseScale.y * normalizedScaleY,
+            baseScale.z
+        );
+    }
+
+    private Vector2 GetNormalizedDirectionOrZero(Vector2 vector)
+    {
+        if (vector.sqrMagnitude <= 0.0001f)
+            return Vector2.zero;
+
+        return vector.normalized;
     }
 
     private IEnumerator AnimateScale(Vector3 from, Vector3 to, float duration, AnimationCurve curve)
@@ -436,13 +470,16 @@ public class JellyAnimation : MonoBehaviour
             yield break;
         }
 
-        float t = 0f;
-        while (t < duration)
+        float elapsedTime = 0f;
+
+        while (elapsedTime < duration)
         {
-            t += Time.deltaTime;
-            float p = Mathf.Clamp01(t / duration);
-            float eased = curve != null ? curve.Evaluate(p) : p;
-            visualRoot.localScale = Vector3.LerpUnclamped(from, to, eased);
+            elapsedTime += Time.deltaTime;
+
+            float progress = Mathf.Clamp01(elapsedTime / duration);
+            float easedProgress = curve != null ? curve.Evaluate(progress) : progress;
+
+            visualRoot.localScale = Vector3.LerpUnclamped(from, to, easedProgress);
             yield return null;
         }
 
@@ -457,26 +494,30 @@ public class JellyAnimation : MonoBehaviour
             yield break;
         }
 
-        float t = 0f;
-        while (t < duration)
+        float elapsedTime = 0f;
+
+        while (elapsedTime < duration)
         {
-            t += Time.deltaTime;
-            float p = Mathf.Clamp01(t / duration);
-            float spring = EvaluateDampedSpring01(p, springOscillationCount, springDamping);
-            visualRoot.localScale = Vector3.LerpUnclamped(from, to, spring);
+            elapsedTime += Time.deltaTime;
+
+            float progress = Mathf.Clamp01(elapsedTime / duration);
+            float springValue = EvaluateDampedSpring01(progress, springOscillationCount, springDamping);
+
+            visualRoot.localScale = Vector3.LerpUnclamped(from, to, springValue);
             yield return null;
         }
 
         visualRoot.localScale = to;
     }
 
-    private float EvaluateDampedSpring01(float t, float oscillations, float damping)
+    // Hàm spring đơn giản để tạo cảm giác nảy mềm
+    private float EvaluateDampedSpring01(float progress, float oscillations, float damping)
     {
-        t = Mathf.Clamp01(t);
+        progress = Mathf.Clamp01(progress);
 
-        float expo = Mathf.Exp(-damping * t);
-        float wave = Mathf.Cos(oscillations * Mathf.PI * 2f * t);
+        float exponentialValue = Mathf.Exp(-damping * progress);
+        float waveValue = Mathf.Cos(oscillations * Mathf.PI * 2f * progress);
 
-        return 1f - expo * wave;
+        return 1f - exponentialValue * waveValue;
     }
 }

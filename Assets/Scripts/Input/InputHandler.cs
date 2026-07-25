@@ -159,13 +159,7 @@ public class InputHandler : MonoBehaviour
             return;
 
         Vector3 current = selectedPiece.transform.position;
-        Vector3 next = Vector3.SmoothDamp(
-            current,
-            dragTargetPosition,
-            ref dragVelocity,
-            dragSmoothTime,
-            dragMaxSpeed
-        );
+        Vector3 next = Vector3.SmoothDamp(current, dragTargetPosition, ref dragVelocity, dragSmoothTime, dragMaxSpeed);
 
         next.z = 0f;
         selectedPiece.transform.position = next;
@@ -226,7 +220,6 @@ public class InputHandler : MonoBehaviour
 
         if (ObjectPool.Instance == null)
         {
-            Debug.LogError("SpawnNextPiece failed: ObjectPool.Instance is null");
             return;
         }
 
@@ -235,7 +228,6 @@ public class InputHandler : MonoBehaviour
 
         if (piece == null)
         {
-            Debug.LogError($"SpawnNextPiece failed: pool tag '{jellyPoolTag}' not found or missing JellyPiece component");
             return;
         }
 

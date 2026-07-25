@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using UnityEngine;
 
 public class JellyPopEffect : MonoBehaviour, IPoolable
@@ -9,44 +9,91 @@ public class JellyPopEffect : MonoBehaviour, IPoolable
 
     private void Awake()
     {
-        if (particleSystemFx == null)
-            particleSystemFx = GetComponent<ParticleSystem>();
+        CacheReferences();
     }
 
+    // Phát particle với màu được truyền vào, sau đó tự trả object về pool
     public void Play(Color color)
     {
         if (particleSystemFx == null)
             return;
 
         StopAutoDespawnRoutine();
+        ApplyStartColor(color);
+        RestartParticle();
 
-        var main = particleSystemFx.main;
-        main.startColor = color;
+        float effectLifetime = GetEffectLifetime();
+        autoDespawnRoutine = StartCoroutine(AutoDespawnRoutine(effectLifetime));
+    }
+
+    public void OnSpawned()
+    {
+        ResetEffectState();
+    }
+
+    public void OnDespawned()
+    {
+        ResetEffectState();
+    }
+
+    private void CacheReferences()
+    {
+        if (particleSystemFx == null)
+            particleSystemFx = GetComponent<ParticleSystem>();
+    }
+
+    private void ResetEffectState()
+    {
+        StopAutoDespawnRoutine();
+        CacheReferences();
+
+        if (particleSystemFx == null)
+            return;
 
         particleSystemFx.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
         particleSystemFx.Clear(true);
-        particleSystemFx.Play(true);
-
-        float life = GetEffectLifetime();
-        autoDespawnRoutine = StartCoroutine(AutoDespawnRoutine(life));
     }
 
+    private void ApplyStartColor(Color color)
+    {
+        ParticleSystem.MainModule mainModule = particleSystemFx.main;
+        mainModule.startColor = color;
+    }
+
+    private void RestartParticle()
+    {
+        particleSystemFx.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        particleSystemFx.Clear(true);
+        particleSystemFx.Play(true);
+    }
+
+    // Tính thời gian sống gần đúng của effect để biết khi nào nên despawn
     private float GetEffectLifetime()
     {
         if (particleSystemFx == null)
             return 0.2f;
 
-        var main = particleSystemFx.main;
+        ParticleSystem.MainModule mainModule = particleSystemFx.main;
 
-        float duration = main.duration;
-        float startLifetime = main.startLifetime.mode switch
-        {
-            ParticleSystemCurveMode.Constant => main.startLifetime.constant,
-            ParticleSystemCurveMode.TwoConstants => main.startLifetime.constantMax,
-            _ => main.startLifetime.constantMax
-        };
+        float duration = mainModule.duration;
+        float startLifetime = GetStartLifetime(mainModule);
 
         return duration + startLifetime + 0.1f;
+    }
+
+    private float GetStartLifetime(ParticleSystem.MainModule mainModule)
+    {
+        switch (mainModule.startLifetime.mode)
+        {
+            case ParticleSystemCurveMode.Constant:
+                return mainModule.startLifetime.constant;
+
+            case ParticleSystemCurveMode.TwoConstants:
+                return mainModule.startLifetime.constantMax;
+
+            default:
+                return mainModule.startLifetime.constantMax;
+        }
     }
 
     private IEnumerator AutoDespawnRoutine(float delay)
@@ -57,42 +104,16 @@ public class JellyPopEffect : MonoBehaviour, IPoolable
             ObjectPool.Instance.Despawn(gameObject);
         else
             gameObject.SetActive(false);
+
+        autoDespawnRoutine = null;
     }
 
     private void StopAutoDespawnRoutine()
     {
-        if (autoDespawnRoutine != null)
-        {
-            StopCoroutine(autoDespawnRoutine);
-            autoDespawnRoutine = null;
-        }
-    }
+        if (autoDespawnRoutine == null)
+            return;
 
-    public void OnSpawned()
-    {
-        StopAutoDespawnRoutine();
-
-        if (particleSystemFx == null)
-            particleSystemFx = GetComponent<ParticleSystem>();
-
-        if (particleSystemFx != null)
-        {
-            particleSystemFx.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-            particleSystemFx.Clear(true);
-        }
-    }
-
-    public void OnDespawned()
-    {
-        StopAutoDespawnRoutine();
-
-        if (particleSystemFx == null)
-            particleSystemFx = GetComponent<ParticleSystem>();
-
-        if (particleSystemFx != null)
-        {
-            particleSystemFx.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-            particleSystemFx.Clear(true);
-        }
+        StopCoroutine(autoDespawnRoutine);
+        autoDespawnRoutine = null;
     }
 }

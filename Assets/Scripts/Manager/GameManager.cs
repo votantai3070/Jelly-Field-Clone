@@ -32,6 +32,8 @@ public class GameManager : MonoBehaviour
     public bool IsGameEnded { get; private set; }
     public bool IsResolving { get; private set; }
 
+    private const int MaxResolveIterations = 200;
+
     private void Start()
     {
         ValidateReferences();
@@ -49,26 +51,9 @@ public class GameManager : MonoBehaviour
             goalSystem.OnWin -= HandleWin;
     }
 
-    private void NotifyGoalUI()
-    {
-        if (levelData != null)
-            OnGoalObjectiveUIChanged?.Invoke(levelData);
-    }
-
     public LevelGoalData GetCurrentLevelData()
     {
         return levelData;
-    }
-
-    private void ValidateReferences()
-    {
-        if (board == null) Debug.LogError("GameManager missing BoardManager");
-        if (mergeSystem == null) Debug.LogError("GameManager missing MergeSystem");
-        if (goalSystem == null) Debug.LogError("GameManager missing GoalSystem");
-        if (levelData == null) Debug.LogError("GameManager missing LevelGoalData");
-        if (jellyPrefab == null) Debug.LogError("GameManager missing JellyPrefab");
-        if (inputHandler == null) Debug.LogWarning("GameManager missing InputHandler");
-        if (jellyPopEffectPrefab == null) Debug.LogWarning("GameManager missing JellyPopEffect prefab");
     }
 
     public void InitializeLevel(LevelGoalData levelGoal)
@@ -78,13 +63,11 @@ public class GameManager : MonoBehaviour
         if (levelGoal != null)
         {
             levelData = levelGoal;
-            board.ConfigureBoard(levelData.width, levelData.height);
-            goalSystem.Initialize(levelData);
+            SetupBoardAndGoals(levelData);
             NotifyGoalUI();
         }
 
-        if (inputHandler != null && !IsGameEnded)
-            inputHandler.SpawnNextPiece();
+        TrySpawnNextPiece();
     }
 
     public void ResetCurrentLevelRuntime()
@@ -117,6 +100,62 @@ public class GameManager : MonoBehaviour
         piece.Setup(GenerateRandomSubCells());
     }
 
+    public void ResolveTurn(JellyPiece placedPiece, Vector2Int placedCoord)
+    {
+        if (IsGameEnded)
+            return;
+
+        if (IsResolving)
+            return;
+
+        StartCoroutine(ResolveTurnRoutine(placedCoord));
+    }
+
+    private void NotifyGoalUI()
+    {
+        if (levelData != null)
+            OnGoalObjectiveUIChanged?.Invoke(levelData);
+    }
+
+    private void ValidateReferences()
+    {
+        if (board == null)
+            Debug.LogError("GameManager missing BoardManager");
+
+        if (mergeSystem == null)
+            Debug.LogError("GameManager missing MergeSystem");
+
+        if (goalSystem == null)
+            Debug.LogError("GameManager missing GoalSystem");
+
+        if (levelData == null)
+            Debug.LogError("GameManager missing LevelGoalData");
+
+        if (jellyPrefab == null)
+            Debug.LogError("GameManager missing JellyPrefab");
+
+        if (inputHandler == null)
+            Debug.LogWarning("GameManager missing InputHandler");
+
+        if (jellyPopEffectPrefab == null)
+            Debug.LogWarning("GameManager missing JellyPopEffect prefab");
+    }
+
+    private void SetupBoardAndGoals(LevelGoalData levelGoal)
+    {
+        if (board != null)
+            board.ConfigureBoard(levelGoal.width, levelGoal.height);
+
+        if (goalSystem != null)
+            goalSystem.Initialize(levelGoal);
+    }
+
+    private void TrySpawnNextPiece()
+    {
+        if (inputHandler != null && !IsGameEnded)
+            inputHandler.SpawnNextPiece();
+    }
+
     private List<JellySubCell> GenerateRandomSubCells()
     {
         int count = UnityEngine.Random.Range(1, 5);
@@ -144,19 +183,20 @@ public class GameManager : MonoBehaviour
             JellyColor.Green
         };
 
-        for (int j = 0; j < index; j++)
+        for (int i = 0; i < index; i++)
         {
-            if (current[j] == null)
+            if (current[i] == null)
                 continue;
 
-            if (AreSubCellsAdjacentInSameJelly(count, index, j))
-                candidates.Remove(current[j].color);
+            if (AreSubCellsAdjacentInSameJelly(count, index, i))
+                candidates.Remove(current[i].color);
         }
 
         if (candidates.Count == 0)
             return GetRandomColor();
 
-        return candidates[UnityEngine.Random.Range(0, candidates.Count)];
+        int randomIndex = UnityEngine.Random.Range(0, candidates.Count);
+        return candidates[randomIndex];
     }
 
     private bool AreSubCellsAdjacentInSameJelly(int count, int a, int b)
@@ -191,147 +231,188 @@ public class GameManager : MonoBehaviour
         return (JellyColor)UnityEngine.Random.Range(0, 4);
     }
 
-    public void ResolveTurn(JellyPiece placedPiece, Vector2Int placedCoord)
-    {
-        if (IsGameEnded || IsResolving)
-            return;
-
-        StartCoroutine(ResolveTurnRoutine(placedCoord));
-    }
-
     private IEnumerator ResolveTurnRoutine(Vector2Int placedCoord)
     {
         IsResolving = true;
 
-        Queue<Vector2Int> pending = new Queue<Vector2Int>();
+        Queue<Vector2Int> pendingCoords = new Queue<Vector2Int>();
         HashSet<string> resolvedStates = new HashSet<string>();
-        int safetyCounter = 0;
-        const int maxIterations = 200;
+        int iterationCount = 0;
 
-        pending.Enqueue(placedCoord);
+        pendingCoords.Enqueue(placedCoord);
 
-        while (pending.Count > 0 && safetyCounter < maxIterations)
+        while (pendingCoords.Count > 0 && iterationCount < MaxResolveIterations)
         {
-            safetyCounter++;
-            Vector2Int coord = pending.Dequeue();
+            iterationCount++;
 
-            if (board == null || !board.IsInsideGrid(coord))
+            Vector2Int currentCoord = pendingCoords.Dequeue();
+
+            if (!CanResolveAtCoord(currentCoord))
                 continue;
 
-            bool hasMatch = mergeSystem.TryGetTouchMatchesForPlacedPiece(coord, out List<MatchedSubCellData> matchedSubs);
-            if (!hasMatch || matchedSubs == null || matchedSubs.Count == 0)
+            bool hasMatch = mergeSystem.TryGetTouchMatchesForPlacedPiece(currentCoord, out List<MatchedSubCellData> matchedSubCells);
+            if (!hasMatch || matchedSubCells == null || matchedSubCells.Count == 0)
                 continue;
 
-            string stateKey = BuildMatchStateKey(coord, matchedSubs);
+            string stateKey = BuildMatchStateKey(currentCoord, matchedSubCells);
             if (resolvedStates.Contains(stateKey))
                 continue;
 
             resolvedStates.Add(stateKey);
 
-            HashSet<JellyPiece> touchedPieces = new HashSet<JellyPiece>();
+            yield return StartCoroutine(ResolveSingleMatchRoutine(matchedSubCells, pendingCoords));
 
-            for (int i = 0; i < matchedSubs.Count; i++)
-            {
-                MatchedSubCellData data = matchedSubs[i];
-                if (data != null && data.piece != null)
-                    touchedPieces.Add(data.piece);
-            }
-
-            foreach (JellyPiece piece in touchedPieces)
-            {
-                if (piece != null)
-                    piece.PlayPreCollectPulse();
-            }
-
-            yield return new WaitForSeconds(preCollectPulseDelay);
-
-            List<JellyPiece> emptiedPieces = new List<JellyPiece>();
-            HashSet<JellyPiece> survivedPieces = new HashSet<JellyPiece>();
-
-            for (int i = 0; i < matchedSubs.Count; i++)
-            {
-                MatchedSubCellData data = matchedSubs[i];
-                if (data == null || data.piece == null || string.IsNullOrEmpty(data.subCellId))
-                    continue;
-
-                bool removed = data.piece.RemoveSubCellById(data.subCellId);
-                if (removed)
-                    goalSystem.CollectRemovedColor(data.color, 1);
-            }
-
-            foreach (JellyPiece piece in touchedPieces)
-            {
-                if (piece == null)
-                    continue;
-
-                if (piece.IsEmptyCompletely())
-                    emptiedPieces.Add(piece);
-                else
-                    survivedPieces.Add(piece);
-            }
-
-            foreach (JellyPiece piece in survivedPieces)
-            {
-                if (piece != null)
-                    piece.PlayPreCollectPulse();
-            }
-
-            if (emptiedPieces.Count > 0)
-            {
-                Vector3 collectCenter = GetCollectCenter(emptiedPieces);
-                yield return StartCoroutine(PlayCollectAndRemoveRoutine(emptiedPieces, collectCenter));
-            }
-
-            foreach (JellyPiece piece in survivedPieces)
-            {
-                if (piece == null || !piece.HasCell)
-                    continue;
-
-                pending.Enqueue(piece.CurrentCoord);
-                pending.Enqueue(piece.CurrentCoord + Vector2Int.up);
-                pending.Enqueue(piece.CurrentCoord + Vector2Int.right);
-                pending.Enqueue(piece.CurrentCoord + Vector2Int.down);
-                pending.Enqueue(piece.CurrentCoord + Vector2Int.left);
-            }
-
-            yield return new WaitForSeconds(postResolveDelay);
-
-            if (goalSystem.IsWin)
+            if (goalSystem != null && goalSystem.IsWin)
             {
                 IsResolving = false;
                 yield break;
             }
+
+            yield return new WaitForSeconds(postResolveDelay);
         }
 
-        if (safetyCounter >= maxIterations)
+        if (iterationCount >= MaxResolveIterations)
             Debug.LogWarning("ResolveTurnRoutine stopped by maxIterations safeguard");
 
-        if (!board.HasEmptyCell())
+        yield return StartCoroutine(FinishResolveRoutine());
+    }
+
+    private bool CanResolveAtCoord(Vector2Int coord)
+    {
+        if (board == null)
+            return false;
+
+        return board.IsInsideGrid(coord);
+    }
+
+    private IEnumerator ResolveSingleMatchRoutine(
+        List<MatchedSubCellData> matchedSubCells,
+        Queue<Vector2Int> pendingCoords)
+    {
+        HashSet<JellyPiece> touchedPieces = CollectTouchedPieces(matchedSubCells);
+
+        PlayPreCollectPulseOnPieces(touchedPieces);
+        yield return new WaitForSeconds(preCollectPulseDelay);
+
+        RemoveMatchedSubCells(matchedSubCells);
+
+        List<JellyPiece> emptiedPieces = new List<JellyPiece>();
+        HashSet<JellyPiece> survivedPieces = new HashSet<JellyPiece>();
+
+        SplitPiecesByEmptyState(touchedPieces, emptiedPieces, survivedPieces);
+
+        PlayPreCollectPulseOnPieces(survivedPieces);
+
+        if (emptiedPieces.Count > 0)
+        {
+            Vector3 collectCenter = GetCollectCenter(emptiedPieces);
+            yield return StartCoroutine(PlayCollectAndRemoveRoutine(emptiedPieces, collectCenter));
+        }
+
+        EnqueueNeighborCoords(survivedPieces, pendingCoords);
+    }
+
+    private HashSet<JellyPiece> CollectTouchedPieces(List<MatchedSubCellData> matchedSubCells)
+    {
+        HashSet<JellyPiece> touchedPieces = new HashSet<JellyPiece>();
+
+        for (int i = 0; i < matchedSubCells.Count; i++)
+        {
+            MatchedSubCellData data = matchedSubCells[i];
+            if (data != null && data.piece != null)
+                touchedPieces.Add(data.piece);
+        }
+
+        return touchedPieces;
+    }
+
+    private void PlayPreCollectPulseOnPieces(IEnumerable<JellyPiece> pieces)
+    {
+        foreach (JellyPiece piece in pieces)
+        {
+            if (piece != null)
+                piece.PlayPreCollectPulse();
+        }
+    }
+
+    private void RemoveMatchedSubCells(List<MatchedSubCellData> matchedSubCells)
+    {
+        for (int i = 0; i < matchedSubCells.Count; i++)
+        {
+            MatchedSubCellData data = matchedSubCells[i];
+            if (data == null || data.piece == null || string.IsNullOrEmpty(data.subCellId))
+                continue;
+
+            bool removed = data.piece.RemoveSubCellById(data.subCellId);
+            if (removed && goalSystem != null)
+                goalSystem.CollectRemovedColor(data.color, 1);
+        }
+    }
+
+    private void SplitPiecesByEmptyState(
+        HashSet<JellyPiece> touchedPieces,
+        List<JellyPiece> emptiedPieces,
+        HashSet<JellyPiece> survivedPieces)
+    {
+        foreach (JellyPiece piece in touchedPieces)
+        {
+            if (piece == null)
+                continue;
+
+            if (piece.IsEmptyCompletely())
+                emptiedPieces.Add(piece);
+            else
+                survivedPieces.Add(piece);
+        }
+    }
+
+    private void EnqueueNeighborCoords(HashSet<JellyPiece> survivedPieces, Queue<Vector2Int> pendingCoords)
+    {
+        foreach (JellyPiece piece in survivedPieces)
+        {
+            if (piece == null || !piece.HasCell)
+                continue;
+
+            Vector2Int coord = piece.CurrentCoord;
+
+            pendingCoords.Enqueue(coord);
+            pendingCoords.Enqueue(coord + Vector2Int.up);
+            pendingCoords.Enqueue(coord + Vector2Int.right);
+            pendingCoords.Enqueue(coord + Vector2Int.down);
+            pendingCoords.Enqueue(coord + Vector2Int.left);
+        }
+    }
+
+    private IEnumerator FinishResolveRoutine()
+    {
+        if (board != null && !board.HasEmptyCell())
         {
             IsGameEnded = true;
             Debug.Log("LOSE - Board Full");
-            UI.Instance.losePanel.SetActive(true);
+
+            if (UI.Instance != null && UI.Instance.losePanel != null)
+                UI.Instance.losePanel.SetActive(true);
+
             IsResolving = false;
             yield break;
         }
 
         yield return new WaitForSeconds(nextSpawnDelay);
-        IsResolving = false;
 
-        if (!IsGameEnded && inputHandler != null)
-            inputHandler.SpawnNextPiece();
+        IsResolving = false;
+        TrySpawnNextPiece();
     }
 
-    private string BuildMatchStateKey(Vector2Int coord, List<MatchedSubCellData> matchedSubs)
+    private string BuildMatchStateKey(Vector2Int coord, List<MatchedSubCellData> matchedSubCells)
     {
-        if (matchedSubs == null || matchedSubs.Count == 0)
+        if (matchedSubCells == null || matchedSubCells.Count == 0)
             return coord.ToString();
 
         List<string> ids = new List<string>();
 
-        for (int i = 0; i < matchedSubs.Count; i++)
+        for (int i = 0; i < matchedSubCells.Count; i++)
         {
-            MatchedSubCellData data = matchedSubs[i];
+            MatchedSubCellData data = matchedSubCells[i];
             if (data == null || data.piece == null || string.IsNullOrEmpty(data.subCellId))
                 continue;
 
@@ -345,15 +426,9 @@ public class GameManager : MonoBehaviour
     private IEnumerator PlayCollectAndRemoveRoutine(List<JellyPiece> piecesToRemove, Vector3 collectCenter)
     {
         int completedCount = 0;
-        int total = 0;
+        int totalCount = CountValidPieces(piecesToRemove);
 
-        for (int i = 0; i < piecesToRemove.Count; i++)
-        {
-            if (piecesToRemove[i] != null)
-                total++;
-        }
-
-        if (total == 0)
+        if (totalCount == 0)
             yield break;
 
         for (int i = 0; i < piecesToRemove.Count; i++)
@@ -363,7 +438,9 @@ public class GameManager : MonoBehaviour
                 continue;
 
             Vector2Int coord = piece.CurrentCoord;
-            board.RemovePiece(coord);
+
+            if (board != null)
+                board.RemovePiece(coord);
 
             piece.PlayCollectToPoint(collectCenter, () =>
             {
@@ -381,8 +458,21 @@ public class GameManager : MonoBehaviour
             });
         }
 
-        while (completedCount < total)
+        while (completedCount < totalCount)
             yield return null;
+    }
+
+    private int CountValidPieces(List<JellyPiece> pieces)
+    {
+        int count = 0;
+
+        for (int i = 0; i < pieces.Count; i++)
+        {
+            if (pieces[i] != null)
+                count++;
+        }
+
+        return count;
     }
 
     private Vector3 GetCollectCenter(List<JellyPiece> pieces)
@@ -411,8 +501,24 @@ public class GameManager : MonoBehaviour
         if (jellyPopEffectPrefab == null || piece == null)
             return;
 
-        JellyPopEffect fx = ObjectPool.Instance.Spawn(jellyPopEffectPoolTag, position, Quaternion.identity, null).GetComponent<JellyPopEffect>();
-        fx.Play(GetColorFromJelly(piece));
+        if (ObjectPool.Instance == null)
+            return;
+
+        GameObject fxObject = ObjectPool.Instance.Spawn(
+            jellyPopEffectPoolTag,
+            position,
+            Quaternion.identity,
+            null
+        );
+
+        if (fxObject == null)
+            return;
+
+        JellyPopEffect popEffect = fxObject.GetComponent<JellyPopEffect>();
+        if (popEffect == null)
+            return;
+
+        popEffect.Play(GetColorFromJelly(piece));
     }
 
     private Color GetColorFromJelly(JellyPiece piece)
@@ -422,13 +528,21 @@ public class GameManager : MonoBehaviour
 
         switch (piece.GetPrimaryColor())
         {
-            case JellyColor.Red: return new Color(1f, 0.35f, 0.35f);
-            case JellyColor.Yellow: return new Color(1f, 0.87f, 0.25f);
-            case JellyColor.Blue: return new Color(0.3f, 0.55f, 1f);
-            case JellyColor.Green: return new Color(0.35f, 0.9f, 0.45f);
-        }
+            case JellyColor.Red:
+                return new Color(1f, 0.35f, 0.35f);
 
-        return Color.white;
+            case JellyColor.Yellow:
+                return new Color(1f, 0.87f, 0.25f);
+
+            case JellyColor.Blue:
+                return new Color(0.3f, 0.55f, 1f);
+
+            case JellyColor.Green:
+                return new Color(0.35f, 0.9f, 0.45f);
+
+            default:
+                return Color.white;
+        }
     }
 
     private void HandleWin()

@@ -9,7 +9,7 @@ public class GoalSystem : MonoBehaviour
 
     [SerializeField] private LevelGoalData currentLevel;
 
-    private Dictionary<JellyColor, int> collected = new Dictionary<JellyColor, int>();
+    private readonly Dictionary<JellyColor, int> collected = new Dictionary<JellyColor, int>();
 
     public bool IsWin { get; private set; }
 
@@ -21,42 +21,39 @@ public class GoalSystem : MonoBehaviour
 
         if (currentLevel == null)
         {
-            Debug.LogError("GoalSystem Initialize failed: currentLevel is null");
+            Debug.LogError("GoalSystem Initialize failed: levelData is null");
             return;
         }
 
-        for (int i = 0; i < currentLevel.goals.Count; i++)
-        {
-            JellyColor color = currentLevel.goals[i].color;
-            if (!collected.ContainsKey(color))
-                collected.Add(color, 0);
-        }
+        CreateCollectedEntries();
     }
 
     public void CollectRemovedColor(JellyColor color, int removedCount)
     {
-        if (removedCount <= 0 || IsWin || currentLevel == null)
+        if (removedCount <= 0)
             return;
 
-        for (int i = 0; i < currentLevel.goals.Count; i++)
-        {
-            if (currentLevel.goals[i].color == color)
-            {
-                if (!collected.ContainsKey(color))
-                    collected[color] = 0;
+        if (IsWin)
+            return;
 
-                collected[color] += removedCount;
+        if (currentLevel == null)
+            return;
 
-                OnCollectedChanged?.Invoke(collected);
-                CheckWinCondition();
-                return;
-            }
-        }
+        if (!IsGoalColor(color))
+            return;
+
+        AddCollectedAmount(color, removedCount);
+
+        OnCollectedChanged?.Invoke(collected);
+        CheckWinCondition();
     }
 
     public int GetCollected(JellyColor color)
     {
-        return collected.ContainsKey(color) ? collected[color] : 0;
+        if (collected.TryGetValue(color, out int value))
+            return value;
+
+        return 0;
     }
 
     public int GetRequired(JellyColor color)
@@ -75,20 +72,59 @@ public class GoalSystem : MonoBehaviour
 
     public void CheckWinCondition()
     {
-        if (currentLevel == null || IsWin)
+        if (currentLevel == null)
+            return;
+
+        if (IsWin)
             return;
 
         for (int i = 0; i < currentLevel.goals.Count; i++)
         {
             var goal = currentLevel.goals[i];
-            int current = collected.ContainsKey(goal.color) ? collected[goal.color] : 0;
+            int collectedAmount = GetCollected(goal.color);
 
-            if (current < goal.required)
+            if (collectedAmount < goal.required)
                 return;
         }
 
         IsWin = true;
-        UI.Instance.winPanel.SetActive(true);
+
+        if (UI.Instance != null && UI.Instance.winPanel != null)
+            UI.Instance.winPanel.SetActive(true);
+
         OnWin?.Invoke();
+    }
+
+    private void CreateCollectedEntries()
+    {
+        for (int i = 0; i < currentLevel.goals.Count; i++)
+        {
+            JellyColor color = currentLevel.goals[i].color;
+
+            if (!collected.ContainsKey(color))
+                collected.Add(color, 0);
+        }
+    }
+
+    private bool IsGoalColor(JellyColor color)
+    {
+        if (currentLevel == null)
+            return false;
+
+        for (int i = 0; i < currentLevel.goals.Count; i++)
+        {
+            if (currentLevel.goals[i].color == color)
+                return true;
+        }
+
+        return false;
+    }
+
+    private void AddCollectedAmount(JellyColor color, int amount)
+    {
+        if (!collected.ContainsKey(color))
+            collected[color] = 0;
+
+        collected[color] += amount;
     }
 }
